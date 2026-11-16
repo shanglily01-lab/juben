@@ -1,0 +1,31 @@
+{
+  "name": "moben",
+  "private": true,
+  "version": "0.1.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "next dev -H 0.0.0.0 -p 3000",
+    "build": "next build",
+    "start": "next start -H 0.0.0.0 -p 3000",
+    "icons": "node scripts/make-icons.mjs",
+    "check:seed": "node --experimental-strip-types scripts/check-seed.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "next": "^15.5.6",
+    "nodemailer": "^10.6.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "typescript": "^5.9.0",
+    "vitest": "^5.1.0"
+  }
+}
