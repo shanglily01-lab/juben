@@ -173,17 +173,15 @@ rm -f /etc/nginx/sites-enabled/default
 nginx -t
 systemctl reload nginx
 
-if [[ -d "/etc/letsencrypt/live/${DOMAIN}" ]]; then
-  echo "==> 证书已存在，跳过申请"
-else
-  echo "==> 申请 Let's Encrypt 证书"
-  if ! certbot --nginx --non-interactive --agree-tos \
+echo "==> 安装 HTTPS 证书"
+# 每次都执行。上面的 Nginx 配置只监听 80，不重新安装的话，443 会落到这台机器上别的站点证书。
+if ! certbot --nginx --non-interactive --agree-tos --keep-until-expiring --redirect \
+  -m "$CERTBOT_EMAIL" \
+  -d "$DOMAIN" -d "$WWW_DOMAIN"; then
+  echo "连同 www 申请失败，改为只签 ${DOMAIN}" >&2
+  certbot --nginx --non-interactive --agree-tos --keep-until-expiring --redirect \
     -m "$CERTBOT_EMAIL" \
-    -d "$DOMAIN" -d "$WWW_DOMAIN" \
-    --redirect; then
-    echo "证书没有签下来。确认 DNS 已经指向这台机器后，执行：" >&2
-    echo "  sudo certbot --nginx -d ${DOMAIN} -d ${WWW_DOMAIN} --redirect" >&2
-  fi
+    -d "$DOMAIN"
 fi
 
 for _ in 1 2 3 4 5 6 7 8 9 10; do
