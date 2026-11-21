@@ -20,7 +20,7 @@ export default async function InvitePage() {
   return (
     <div className="wrap page">
       <p className="kicker">邀请</p>
-      <h1>把墨本递给朋友</h1>
+      <h1>把大黄书剧本小说网递给朋友</h1>
       <p className="intro">
         朋友用你的邀请码注册，并激活邮箱后，你得到 {INVITER_COINS} 金币，对方在注册赠送之外再得 {INVITEE_COINS} 金币。已经有账号的人不能补填。
       </p>

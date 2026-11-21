@@ -21,14 +21,19 @@ export default async function RegisterPage({
 
   return (
     <div className="wrap page">
-      <p className="kicker">账号</p>
-      <h1>注册</h1>
-      <p className="intro">
-        {invite
-          ? `邀请码 ${invite.toUpperCase()} 已填好。邮箱激活后到账 ${SIGNUP_COINS} 金币，邀请码有效再加 ${INVITEE_COINS} 金币。`
-          : `一个账号同时用于短剧和小说。请到邮箱点开激活链接，激活后到账 ${SIGNUP_COINS} 金币。`}
-      </p>
-      <AuthForm mode="register" next={next} invite={invite} />
+      <section className="auth">
+        <span className="auth-seal" aria-hidden>
+          书
+        </span>
+        <p className="kicker">大黄书</p>
+        <h1>注册</h1>
+        <p className="intro">
+          {invite
+            ? `邀请码 ${invite.toUpperCase()} 已填好。激活后到账 ${SIGNUP_COINS} 金币，有效邀请再加 ${INVITEE_COINS}。`
+            : `短剧和小说共用一个账号。激活邮箱后到账 ${SIGNUP_COINS} 金币。`}
+        </p>
+        <AuthForm mode="register" next={next} invite={invite} />
+      </section>
     </div>
   );
 }

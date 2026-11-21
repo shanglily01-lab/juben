@@ -2,14 +2,14 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "墨本",
-    short_name: "墨本",
-    description: "短剧剧本与小说。分类阅读，投稿审核，金币解锁。",
+    name: "大黄书剧本小说网",
+    short_name: "大黄书",
+    description: "大黄书剧本小说网。短剧剧本与小说，分类阅读，投稿审核，金币解锁。",
     start_url: "/",
     scope: "/",
     display: "standalone",
-    background_color: "#f3ecdf",
-    theme_color: "#1a1410",
+    background_color: "#fff6e4",
+    theme_color: "#fff6e4",
     lang: "zh-CN",
     orientation: "any",
     icons: [

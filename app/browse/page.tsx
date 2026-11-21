@@ -26,7 +26,7 @@ export default async function BrowsePage({
 
   return (
     <div className="wrap page">
-      <p className="kicker">墨本</p>
+      <p className="kicker">大黄书剧本小说网</p>
       <h1>{heading}</h1>
       <form className="search" action="/browse">
         {kind ? <input type="hidden" name="kind" value={kind} /> : null}

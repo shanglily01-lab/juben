@@ -15,7 +15,7 @@ for (const work of readSeedWorks()) {
     JSON.stringify(review),
     review.source,
     work.title,
-    "墨本编辑室",
+    "大黄书",
   );
   console.log(work.title, review.score.toFixed(1), review.grade, review.advice.join(" | "));
 }

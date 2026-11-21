@@ -60,7 +60,7 @@ type CheckinRow = {
 };
 
 const globalDb = globalThis as unknown as { __moben?: DatabaseSync; __mobenSchema?: number };
-const SCHEMA = 3;
+const SCHEMA = 5;
 const ACTIVATION_MS = 24 * 60 * 60 * 1000;
 const RESEND_MS = 60 * 1000;
 
@@ -144,6 +144,13 @@ function migrate(db: DatabaseSync) {
   if (!userColumns.has("email_verified_at")) {
     db.exec("ALTER TABLE users ADD COLUMN email_verified_at TEXT");
     db.exec("UPDATE users SET email_verified_at = created_at WHERE email_verified_at IS NULL");
+  }
+  db.exec("UPDATE users SET username = '大黄叔' WHERE username = '墨本编辑室'");
+  const editorNameTaken = db
+    .prepare("SELECT id FROM users WHERE username = '大黄书' AND email != 'editor@moben.local'")
+    .get();
+  if (!editorNameTaken) {
+    db.prepare("UPDATE users SET username = '大黄书' WHERE email = 'editor@moben.local'").run();
   }
 }
 

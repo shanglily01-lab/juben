@@ -24,9 +24,9 @@ function paint(x, y, size) {
   const cx = (x + 0.5) / size - 0.5;
   const cy = (y + 0.5) / size - 0.5;
   const radius = Math.hypot(cx, cy);
-  const ink = [26, 20, 16, 255];
-  const red = [196, 69, 54, 255];
-  const paper = [243, 236, 223, 255];
+  const ink = [255, 246, 228, 255];
+  const red = [184, 110, 0, 255];
+  const paper = [255, 214, 102, 255];
   const px = (x + 0.5) / size;
   const py = (y + 0.5) / size;
   if (radius > 0.34) return ink;

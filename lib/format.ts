@@ -38,6 +38,10 @@ export function kindLabel(kind: string) {
   return kind === "script" ? "短剧" : "小说";
 }
 
+export function shelfSpec(kind: string, wordCount: number) {
+  return `${kindLabel(kind)} · ${wordCount} 字`;
+}
+
 export function priceLabel(price: number) {
   return price <= 0 ? "免费" : `${price} 金币`;
 }

@@ -63,7 +63,10 @@ export function seedIfEmpty(db: DatabaseSync) {
   const now = nowIso();
   db.exec("BEGIN IMMEDIATE");
   try {
-    const existingAuthor = db.prepare("SELECT id FROM users WHERE username = ?").get("墨本编辑室") as
+    const existingAuthor = db.prepare("SELECT id FROM users WHERE email = ? OR username = ?").get(
+      "editor@moben.local",
+      "大黄书",
+    ) as
       | { id: number }
       | undefined;
     let authorId = existingAuthor?.id ?? 0;
@@ -73,7 +76,7 @@ export function seedIfEmpty(db: DatabaseSync) {
         .prepare(
           "INSERT INTO users (username, email, password_hash, coins, created_at, email_verified_at) VALUES (?, ?, ?, 0, ?, ?)",
         )
-        .run("墨本编辑室", "editor@moben.local", passwordHash, now, now);
+        .run("大黄书", "editor@moben.local", passwordHash, now, now);
       authorId = Number(author.lastInsertRowid);
     }
     const insert = db.prepare(

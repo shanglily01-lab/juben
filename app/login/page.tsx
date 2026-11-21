@@ -15,13 +15,15 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
 
   return (
     <div className="wrap page">
-      <p className="kicker">账号</p>
-      <h1>登录墨本</h1>
-      <p className="intro">登录后可以投稿、看审核结果，并用金币解锁付费篇。邮箱还没激活的话，会先回到激活页。</p>
-      <AuthForm mode="login" next={next} />
-      <p>
-        <a href={`/activate?next=${encodeURIComponent(next)}`}>没收到激活信</a>
-      </p>
+      <section className="auth">
+        <span className="auth-seal" aria-hidden>
+          书
+        </span>
+        <p className="kicker">大黄书</p>
+        <h1>登录</h1>
+        <p className="intro">投稿、看审核、解锁付费篇，都用这一个账号。</p>
+        <AuthForm mode="login" next={next} />
+      </section>
     </div>
   );
 }

@@ -6,10 +6,10 @@ import { getCurrentUser } from "@/lib/auth";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "墨本", template: "%s · 墨本" },
-  description: "短剧剧本与小说。按悬疑、历史、灾难、穿越等分类阅读，投稿后自动审核评级，用金币解锁付费篇目。",
-  applicationName: "墨本",
-  appleWebApp: { capable: true, title: "墨本", statusBarStyle: "black-translucent" },
+  title: { default: "大黄书剧本小说网", template: "%s · 大黄书剧本小说网" },
+  description: "大黄书剧本小说网。短剧剧本与小说放在一起，按分类阅读，投稿后自动审核评级，用金币解锁付费篇目。",
+  applicationName: "大黄书剧本小说网",
+  appleWebApp: { capable: true, title: "大黄书", statusBarStyle: "default" },
   formatDetection: { telephone: false },
   icons: {
     icon: [
@@ -24,7 +24,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#1a1410",
+  themeColor: "#fff6e4",
 };
 
 export const dynamic = "force-dynamic";

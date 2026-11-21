@@ -27,11 +27,11 @@ function outboxDir() {
 let outboxSequence = 0;
 
 export async function sendActivationMail(input: { to: string; username: string; link: string }) {
-  const subject = "激活墨本账号";
+  const subject = "激活大黄书剧本小说网账号";
   const text = [
     `${input.username}，你好。`,
     "",
-    "用下面的链接激活墨本账号。激活之后，注册赠送才会入账。链接 24 小时内有效。",
+    "用下面的链接激活大黄书剧本小说网账号。激活之后，注册赠送才会入账。链接 24 小时内有效。",
     "",
     input.link,
     "",

@@ -24,7 +24,13 @@ export function SiteChrome({ user, children }: { user: ChromeUser; children: Rea
       </a>
       <header className="topbar">
         <a className="logo" href="/">
-          墨本
+          <span className="logo-seal" aria-hidden>
+            书
+          </span>
+          <span className="logo-name">
+            <strong>大黄书</strong>
+            <small>剧本小说网</small>
+          </span>
         </a>
         <nav className="desk-nav" aria-label="目录">
           <a href="/browse" aria-current={library ? "page" : undefined}>
@@ -59,7 +65,7 @@ export function SiteChrome({ user, children }: { user: ChromeUser; children: Rea
         </div>
       </header>
       <main id="main">{children}</main>
-      <footer className="foot">墨本 · 短剧剧本与小说 · 同一套账号和金币</footer>
+      <footer className="foot">大黄书剧本小说网 · 短剧剧本与小说 · 同一套账号和金币</footer>
       <nav className="tabbar" aria-label="底部导航">
         <a className="tab" href="/" aria-current={path === "/" ? "page" : undefined}>
           首页

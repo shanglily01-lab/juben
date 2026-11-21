@@ -78,7 +78,10 @@ export function AuthForm({
         </p>
       ) : null}
       <SubmitButton idle={mode === "login" ? "登录" : signupLabel} pending="请稍等…" />
-      <a href={alt}>{mode === "login" ? "没有账号，去注册" : "已有账号，去登录"}</a>
+      <div className="auth-links">
+        <a href={alt}>{mode === "login" ? "去注册" : "去登录"}</a>
+        {mode === "login" ? <a href={`/activate?next=${encodeURIComponent(next)}`}>没收到激活信</a> : null}
+      </div>
     </form>
   );
 }
