@@ -41,6 +41,9 @@ if [[ ! -f "$SRC/package.json" || ! -f "$SRC/package-lock.json" ]]; then
 fi
 
 export DEBIAN_FRONTEND=noninteractive
+export NEEDRESTART_MODE=l
+mkdir -p /etc/needrestart/conf.d
+printf '%s\n' '$nrconf{restart} = "l";' > /etc/needrestart/conf.d/no-restart.conf
 
 echo "==> 安装系统包"
 apt-get update
@@ -54,9 +57,13 @@ fi
 
 node -e 'if (Number(process.versions.node.split(".")[0]) < 22) process.exit(1)'
 
+echo "==> 安装 npm 11"
+# 系统自带的 npm 10 会把当前 lock 文件判成不同步，npm ci 直接失败。
+npm install -g npm@11
+
 mem_kb="$(awk '/MemTotal/ {print $2}' /proc/meminfo)"
-if [[ "$mem_kb" -lt 1800000 ]] && ! swapon --show | grep -q .; then
-  echo "==> 内存不足 1.8 GB，添加 2 GB 交换分区，避免 next build 被系统杀掉"
+if [[ "$mem_kb" -lt 3500000 ]] && ! swapon --show | grep -q .; then
+  echo "==> 内存不足 3.5 GB，添加 2 GB 交换分区，避免构建时系统卡死并断开 SSH"
   if [[ ! -f /swapfile ]]; then
     fallocate -l 2G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=2048
     chmod 600 /swapfile
@@ -113,7 +120,8 @@ fi
 
 echo "==> 安装依赖并构建"
 chown -R "$APP_USER:$APP_USER" "$APP_DIR"
-sudo -u "$APP_USER" bash -c "cd '$APP_DIR' && npm ci && npm run build"
+# npm ci 会因可选依赖 @emnapi/core 未写入 lock 而失败。安装后还原 lock，避免下次拉取被本地改动挡住。
+sudo -u "$APP_USER" bash -c "cd '$APP_DIR' && npm install --no-audit --no-fund && git checkout -- package-lock.json && NODE_OPTIONS='--max-old-space-size=1024' npm run build"
 
 echo "==> 写入 systemd"
 cat > /etc/systemd/system/dahuangshu.service <<EOF

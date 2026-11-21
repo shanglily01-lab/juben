@@ -5,10 +5,11 @@
 #   1. 安全组放行 22、80、443。
 #   2. dahuangshu.vip 和 www.dahuangshu.vip 的 A 记录指向这台机器的公网 IP。
 #
-# 公开仓库：
-#   sudo CERTBOT_EMAIL=你的邮箱 bash server-pull-deploy.sh
+# 不要把本文件内容直接粘贴进 SSH 窗口。粘贴后脚本里的 exit 会关掉登录会话。
+# 先保存成文件，再执行：
+#   sudo CERTBOT_EMAIL=你的邮箱 bash /root/server-pull-deploy.sh
 # 私有仓库再加一个只在这次命令里使用的令牌，不要写进文件：
-#   sudo GH_TOKEN=github_pat_xxx CERTBOT_EMAIL=你的邮箱 bash server-pull-deploy.sh
+#   sudo GH_TOKEN=github_pat_xxx CERTBOT_EMAIL=你的邮箱 bash /root/server-pull-deploy.sh
 
 set -euo pipefail
 
@@ -25,6 +26,18 @@ if [[ "$(id -u)" -ne 0 ]]; then
 fi
 
 export DEBIAN_FRONTEND=noninteractive
+export NEEDRESTART_MODE=l
+mkdir -p /etc/needrestart/conf.d
+printf '%s\n' '$nrconf{restart} = "l";' > /etc/needrestart/conf.d/no-restart.conf
+
+if [[ -z "${DEPLOY_DETACHED:-}" ]]; then
+  export DEPLOY_DETACHED=1
+  nohup bash "$0" "$@" >> /var/log/dahuangshu-deploy.log 2>&1 &
+  echo "部署已转到后台。SSH 断开后也会继续。"
+  echo "查看进度：tail -f /var/log/dahuangshu-deploy.log"
+  exit 0
+fi
+
 apt-get update
 apt-get install -y git ca-certificates
 
