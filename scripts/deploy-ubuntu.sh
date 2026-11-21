@@ -7,7 +7,7 @@
 #   3. 把本仓库放到服务器上（git clone 或 scp 均可）。
 #
 # 第一次：
-#   sudo CERTBOT_EMAIL=你的邮箱 bash scripts/deploy-ubuntu.sh
+#   sudo bash scripts/deploy-ubuntu.sh
 # 以后更新：
 #   sudo bash scripts/deploy-ubuntu.sh
 #
@@ -22,7 +22,7 @@ APP_USER="${APP_USER:-dahuangshu}"
 APP_DIR="${APP_DIR:-/opt/dahuangshu}"
 DATA_DIR="${DATA_DIR:-/var/lib/dahuangshu}"
 ENV_FILE="${ENV_FILE:-/etc/dahuangshu.env}"
-CERTBOT_EMAIL="${CERTBOT_EMAIL:-admin@dahuangshu.vip}"
+CERTBOT_EMAIL="shanglily01@gmail.com"
 
 if [[ "$(id -u)" -ne 0 ]]; then
   echo "请用 root 运行：sudo bash scripts/deploy-ubuntu.sh" >&2

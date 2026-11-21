@@ -7,9 +7,9 @@
 #
 # 不要把本文件内容直接粘贴进 SSH 窗口。粘贴后脚本里的 exit 会关掉登录会话。
 # 先保存成文件，再执行：
-#   sudo CERTBOT_EMAIL=你的邮箱 bash /root/server-pull-deploy.sh
+#   sudo bash /root/server-pull-deploy.sh
 # 私有仓库再加一个只在这次命令里使用的令牌，不要写进文件：
-#   sudo GH_TOKEN=github_pat_xxx CERTBOT_EMAIL=你的邮箱 bash /root/server-pull-deploy.sh
+#   sudo GH_TOKEN=github_pat_xxx bash /root/server-pull-deploy.sh
 
 set -euo pipefail
 
@@ -17,11 +17,11 @@ DOMAIN="${DOMAIN:-dahuangshu.vip}"
 APP_DIR="${APP_DIR:-/opt/dahuangshu}"
 REPO_SLUG="${REPO_SLUG:-shanglily01-lab/juben}"
 BRANCH="${BRANCH:-main}"
-CERTBOT_EMAIL="${CERTBOT_EMAIL:-admin@dahuangshu.vip}"
+CERTBOT_EMAIL="shanglily01@gmail.com"
 PUBLIC_URL="https://github.com/${REPO_SLUG}.git"
 
 if [[ "$(id -u)" -ne 0 ]]; then
-  echo "请用 root 运行：sudo CERTBOT_EMAIL=你的邮箱 bash server-pull-deploy.sh" >&2
+  echo "请用 root 运行：sudo bash server-pull-deploy.sh" >&2
   exit 1
 fi
 
