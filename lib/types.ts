@@ -35,6 +35,11 @@ export type PublicWork = {
   createdAt: string;
   author: string;
   status: string;
+  /** 已被某人独占买断，其他人不可再读。 */
+  buyoutTaken: boolean;
+  readCount: number;
+  purchaseCount: number;
+  episodeCount: number;
 };
 
 export type SessionUser = {

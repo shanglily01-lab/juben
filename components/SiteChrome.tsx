@@ -13,9 +13,11 @@ export function SiteChrome({ user, children }: { user: ChromeUser; children: Rea
     path.startsWith("/mine") ||
     path.startsWith("/wallet") ||
     path.startsWith("/checkin") ||
-    path.startsWith("/invite");
+    path.startsWith("/invite") ||
+    path.startsWith("/requirements");
   const uploadHref = user ? "/upload" : "/login?next=/upload";
   const mineHref = user ? "/mine" : "/login?next=/mine";
+  const requirementsHref = "/requirements";
 
   return (
     <div className="app">
@@ -36,11 +38,17 @@ export function SiteChrome({ user, children }: { user: ChromeUser; children: Rea
           <a href="/browse" aria-current={library ? "page" : undefined}>
             书库
           </a>
+          <a href="/hot" aria-current={path.startsWith("/hot") ? "page" : undefined}>
+            榜单
+          </a>
+          <a href="/requirements" aria-current={path.startsWith("/requirements") ? "page" : undefined}>
+            征稿
+          </a>
+          <a href="/community" aria-current={path.startsWith("/community") ? "page" : undefined}>
+            社区
+          </a>
           <a href="/browse?kind=script">短剧</a>
           <a href="/browse?kind=novel">小说</a>
-          <a href={user ? "/checkin" : "/login?next=/checkin"} aria-current={path.startsWith("/checkin") ? "page" : undefined}>
-            签到
-          </a>
           <a href={uploadHref} aria-current={upload ? "page" : undefined}>
             投稿
           </a>
@@ -58,9 +66,17 @@ export function SiteChrome({ user, children }: { user: ChromeUser; children: Rea
               {user.coins}
             </a>
           ) : (
-            <a className="text-btn" href="/login">
-              登录
-            </a>
+            <span className="text-btn auth-combo">
+              <a href="/login" aria-current={path.startsWith("/login") ? "page" : undefined}>
+                登录
+              </a>
+              <span className="auth-split" aria-hidden>
+                /
+              </span>
+              <a href="/register" aria-current={path.startsWith("/register") ? "page" : undefined}>
+                注册
+              </a>
+            </span>
           )}
         </div>
       </header>
@@ -73,10 +89,10 @@ export function SiteChrome({ user, children }: { user: ChromeUser; children: Rea
         <a className="tab" href="/browse" aria-current={library ? "page" : undefined}>
           书库
         </a>
-        <a className="tab" href={uploadHref} aria-current={upload ? "page" : undefined}>
-          投稿
+        <a className="tab" href={requirementsHref} aria-current={path.startsWith("/requirements") ? "page" : undefined}>
+          征稿
         </a>
-        <a className="tab" href={mineHref} aria-current={mine ? "page" : undefined}>
+        <a className="tab" href={mineHref} aria-current={mine && !path.startsWith("/requirements") ? "page" : undefined}>
           我的
         </a>
       </nav>

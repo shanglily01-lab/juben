@@ -7,11 +7,16 @@ import { findPack } from "@/lib/coins";
 import { normalizeInviteCode } from "@/lib/codes";
 import { countWords, safeNext } from "@/lib/format";
 import { reviewWork } from "@/lib/ai";
+import { createReviewCover } from "@/lib/cover";
 import { clearSession, getCurrentUser, setSession } from "@/lib/auth";
 import {
   checkIn,
   consumeActivationToken,
   countWorksByAuthor,
+  createDiscussion,
+  createRequirement,
+  deleteDiscussion,
+  deliverRequirement,
   findUserByEmail,
   findUserByLogin,
   getWorkDetail,
@@ -22,13 +27,21 @@ import {
   issueActivationToken,
   rechargeCoins,
   registerUser,
+  setRequirementMaking,
   unlockWork,
   WorkLimitError,
 } from "@/lib/db";
 import { sendActivationMail } from "@/lib/mail";
 import { requestOrigin } from "@/lib/origin";
 import { hashPassword, verifyPassword } from "@/lib/password";
+import { MIN_REQUIREMENT_YUAN } from "@/lib/pricing";
+import { parseBountyYuan } from "@/lib/requirements";
 import type { ActionState, Kind } from "@/lib/types";
+
+function isAdminSecret(raw: string) {
+  const expected = process.env.ADMIN_SECRET?.trim();
+  return Boolean(expected && raw && raw === expected);
+}
 
 function text(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -167,6 +180,15 @@ export async function uploadAction(_prev: ActionState, formData: FormData): Prom
     return { error: "保存失败，请稍后再试" };
   }
 
+  await createReviewCover({
+    id,
+    title,
+    summary,
+    category,
+    kind: kind as Kind,
+    grade: review.grade,
+    content,
+  });
   revalidateAll();
   redirect(`/works/${id}`);
 }
@@ -231,4 +253,118 @@ export async function checkinAction(_prev: ActionState): Promise<ActionState> {
   if (!result.ok) return { error: result.error };
   revalidateAll();
   redirect("/checkin?ok=1");
+}
+
+export async function createRequirementAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "请先登录" };
+
+  const title = text(formData, "title");
+  const kindRaw = text(formData, "kind");
+  const category = text(formData, "category");
+  const brief = text(formData, "brief");
+  const referenceText = text(formData, "reference");
+  const bountyYuan = parseBountyYuan(formData.get("bounty"));
+
+  if (title.length < 2 || title.length > 80) return { error: "标题 2–80 字" };
+  if (kindRaw !== "script" && kindRaw !== "novel") return { error: "请选择短剧或小说" };
+  if (!isCategory(category)) return { error: "请选择分类" };
+  if (brief.length < 20 || brief.length > 4000) return { error: "内容要求 20–4000 字" };
+  if (referenceText.length > 500) return { error: "对标说明最多 500 字" };
+  if (bountyYuan == null) return { error: `赏金至少 ¥${MIN_REQUIREMENT_YUAN}，且为整数` };
+
+  const id = createRequirement({
+    userId: user.id,
+    title,
+    kind: kindRaw as Kind,
+    category,
+    brief,
+    referenceText,
+    bountyYuan,
+  });
+  revalidatePath("/requirements");
+  revalidatePath("/mine");
+  redirect(`/requirements/${id}?pay=1`);
+}
+
+export async function deliverRequirementAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const secret = text(formData, "secret");
+  if (!isAdminSecret(secret)) return { error: "站长口令不对" };
+  const requirementId = Number(text(formData, "requirementId"));
+  const workId = Number(text(formData, "workId"));
+  if (!Number.isInteger(requirementId) || requirementId <= 0) return { error: "缺少征稿 ID" };
+  if (!Number.isInteger(workId) || workId <= 0) return { error: "请填写作品 ID" };
+  const result = deliverRequirement(requirementId, workId);
+  if (!result.ok) return { error: result.error };
+  revalidatePath("/requirements");
+  revalidatePath(`/requirements/${requirementId}`);
+  revalidatePath("/ops/requirements");
+  revalidatePath("/mine");
+  redirect(`/ops/requirements?key=${encodeURIComponent(secret)}&ok=1`);
+}
+
+export async function markRequirementMakingAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const secret = text(formData, "secret");
+  if (!isAdminSecret(secret)) return { error: "站长口令不对" };
+  const requirementId = Number(text(formData, "requirementId"));
+  if (!Number.isInteger(requirementId) || requirementId <= 0) return { error: "缺少征稿 ID" };
+  const result = setRequirementMaking(requirementId);
+  if (!result.ok) return { error: result.error };
+  revalidatePath("/requirements");
+  revalidatePath(`/requirements/${requirementId}`);
+  revalidatePath("/ops/requirements");
+  redirect(`/ops/requirements?key=${encodeURIComponent(secret)}`);
+}
+
+export async function createDiscussionAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "请先登录" };
+
+  const body = text(formData, "body");
+  const title = text(formData, "title");
+  const workRaw = text(formData, "workId");
+  const next = safeNext(text(formData, "next"), "/community");
+
+  let workId: number | null = null;
+  if (workRaw) {
+    const id = Number(workRaw);
+    if (!Number.isInteger(id) || id <= 0) return { error: "作品无效" };
+    const work = getWorkDetail(id);
+    if (!work || work.status !== "published") return { error: "只能引用已上架剧本" };
+    workId = id;
+  }
+
+  // 作品页留言：有 workId、无标题；社区发帖：要标题，且必须引用一部剧本
+  const isWorkComment = Boolean(workId) && !title;
+  if (isWorkComment) {
+    if (body.length < 2 || body.length > 1000) return { error: "留言 2–1000 字" };
+  } else {
+    if (!workId) return { error: "请先搜索并引用一部剧本" };
+    if (title.length < 2 || title.length > 60) return { error: "标题 2–60 字" };
+    if (body.length < 2 || body.length > 2000) return { error: "正文 2–2000 字" };
+  }
+
+  createDiscussion({
+    userId: user.id,
+    workId,
+    title: isWorkComment ? "" : title,
+    body,
+  });
+  revalidatePath("/community");
+  if (workId) revalidatePath(`/works/${workId}`);
+  redirect(next);
+}
+
+export async function deleteDiscussionAction(formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login?next=/community");
+  const id = Number(text(formData, "id"));
+  const next = safeNext(text(formData, "next"), "/community");
+  if (!Number.isInteger(id) || id <= 0) redirect(next);
+  const result = deleteDiscussion(id, user.id);
+  if (result.ok) {
+    revalidatePath("/community");
+    revalidatePath("/", "layout");
+  }
+  redirect(next);
 }

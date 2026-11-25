@@ -5,7 +5,8 @@ import { findUserById } from "@/lib/db";
 import type { SessionUser } from "@/lib/types";
 
 export const SESSION_COOKIE = "moben_session";
-const MAX_AGE = 60 * 60 * 24 * 14;
+/** 登录后保持 90 天，避免每次打开都重新输账号密码。 */
+const MAX_AGE = 60 * 60 * 24 * 90;
 
 function secret() {
   return process.env.SESSION_SECRET || "moben-dev-secret-change-me";
@@ -42,16 +43,23 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
   if (!userId) return null;
   const user = findUserById(userId);
   if (!user?.email_verified_at) return null;
-  return { id: user.id, username: user.username, email: user.email, coins: user.coins };
+  return {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    coins: user.coins,
+  };
 }
 
 export async function setSession(userId: number) {
   const jar = await cookies();
+  const secure = (process.env.APP_ORIGIN || "").startsWith("https://");
   jar.set(SESSION_COOKIE, seal(userId), {
     httpOnly: true,
     sameSite: "lax",
     path: "/",
     maxAge: MAX_AGE,
+    secure,
   });
 }
 

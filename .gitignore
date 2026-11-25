@@ -4,7 +4,10 @@ data/*.sqlite
 data/*.sqlite-*
 data/*.sqlite-journal
 data/outbox/
+data/covers/
 .env
 .env.local
 *.log
 *.tsbuildinfo
+
+exports/

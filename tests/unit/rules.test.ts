@@ -15,6 +15,8 @@ import {
   safeMarkdownUrl,
   safeNext,
   shanghaiToday,
+  formatReads,
+  shelfPriceLabel,
   shortDay,
 } from "@/lib/format";
 import { hashPassword, verifyPassword } from "@/lib/password";
@@ -85,6 +87,13 @@ describe("格式", () => {
     expect(gradeOf(5.9)).toBe("未过");
     expect(priceLabel(0)).toBe("免费");
     expect(priceLabel(12)).toBe("12 金币");
+    expect(shelfPriceLabel(0, 9)).toBe("免费");
+    expect(shelfPriceLabel(10, 9.1, 1)).toBe("¥80");
+    expect(shelfPriceLabel(10, 8, 3)).toBe("¥80");
+    expect(shelfPriceLabel(10, 6.5, 1)).toBe("¥20");
+    expect(shelfPriceLabel(10, 9, 20)).toBe("¥300");
+    expect(formatReads(12)).toBe("12 阅读");
+    expect(formatReads(12000)).toBe("1.2万阅读");
   });
 
   it("预览停在句号或段落，短文原样返回", () => {

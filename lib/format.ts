@@ -1,3 +1,4 @@
+import { unlockYuanFromScore, yuanLabel } from "@/lib/pricing";
 import type { Review } from "@/lib/types";
 
 export function nowIso() {
@@ -44,6 +45,30 @@ export function shelfSpec(kind: string, wordCount: number) {
 
 export function priceLabel(price: number) {
   return price <= 0 ? "免费" : `${price} 金币`;
+}
+
+/** Card badge: free stays 免费; paid works show RMB from score + episode count. */
+export function shelfPriceLabel(price: number, score: number, episodeCount = 1) {
+  if (price <= 0) return "免费";
+  return yuanLabel(unlockYuanFromScore(score, episodeCount));
+}
+
+export function formatReads(count: number) {
+  const n = Math.max(0, Math.floor(Number(count) || 0));
+  if (n >= 10000) {
+    const wan = n / 10000;
+    return `${wan >= 10 ? wan.toFixed(0) : wan.toFixed(1)}万阅读`;
+  }
+  return `${n} 阅读`;
+}
+
+export function formatPurchases(count: number) {
+  const n = Math.max(0, Math.floor(Number(count) || 0));
+  if (n >= 10000) {
+    const wan = n / 10000;
+    return `${wan >= 10 ? wan.toFixed(0) : wan.toFixed(1)}万购买`;
+  }
+  return `${n} 购买`;
 }
 
 export function gradeOf(score: number) {

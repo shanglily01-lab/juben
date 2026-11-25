@@ -1,13 +1,27 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
+import { WorkDiscussionForm } from "@/components/DiscussionForm";
+import { DiscussionList } from "@/components/DiscussionList";
+import { EpisodeNav } from "@/components/EpisodeNav";
+import { NoCopy } from "@/components/NoCopy";
 import { Reader } from "@/components/Reader";
 import { ReviewCard } from "@/components/ReviewCard";
-import { UnlockForm } from "@/components/UnlockForm";
+import { WorkPurchase } from "@/components/WorkPurchase";
 import { getCurrentUser } from "@/lib/auth";
 import { categoryName } from "@/lib/categories";
-import { getWorkDetail, hasUnlock } from "@/lib/db";
-import { formatDate, kindLabel, parseReview, previewMarkdown, priceLabel } from "@/lib/format";
+import {
+  countDiscussionsByWork,
+  getWorkBuyoutUserId,
+  getWorkDetail,
+  hasUnlock,
+  hasWorkBuyout,
+  listDiscussionsByWork,
+  recordWorkView,
+} from "@/lib/db";
+import { clampEpisode, splitEpisodes } from "@/lib/episodes";
+import { formatDate, formatReads, kindLabel, parseReview, previewMarkdown, priceLabel } from "@/lib/format";
+import { unlockYuanFromScore, yuanLabel } from "@/lib/pricing";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
@@ -17,7 +31,13 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return { title: work.title, description: work.summary };
 }
 
-export default async function WorkPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function WorkPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ ep?: string }>;
+}) {
   const { id: raw } = await params;
   const id = Number(raw);
   if (!Number.isInteger(id) || id <= 0) notFound();
@@ -26,44 +46,142 @@ export default async function WorkPage({ params }: { params: Promise<{ id: strin
   if (!work) notFound();
   const isAuthor = user?.id === work.author_id;
   if (work.status !== "published" && !isAuthor) notFound();
+  if (work.status === "published") recordWorkView(work.id);
 
+  const exclusiveOwnerId = getWorkBuyoutUserId(work.id);
+  const buyoutTaken = exclusiveOwnerId != null;
+  const iOwnBuyout = Boolean(user && exclusiveOwnerId === user.id);
   const unlocked = user ? hasUnlock(user.id, work.id) : false;
-  const canRead = work.price <= 0 || unlocked || isAuthor;
+  // 被他人买断后：仅买断者与作者可读；先前普通购买者也会失去阅读权
+  const canRead =
+    isAuthor || iOwnBuyout || (!buyoutTaken && (work.price <= 0 || unlocked));
+  const canDownload = canRead && (work.price <= 0 || unlocked || iOwnBuyout || isAuthor);
   const review = parseReview(work.review_json);
+  const episodeCount = Math.max(1, Number(work.episode_count) || splitEpisodes(work.content).length);
+  const cashYuan = work.price > 0 ? unlockYuanFromScore(work.score, episodeCount) : 0;
+  const priceText = work.price <= 0 ? priceLabel(0) : yuanLabel(cashYuan);
+  const showBuy = work.price > 0 && !isAuthor;
+
+  const episodes = splitEpisodes(work.content);
+  const query = await searchParams;
+  const requested = Number(query.ep || 1);
+  const ep = clampEpisode(requested, episodes.length);
+
+  if (!canRead && ep !== 1) {
+    redirect(`/works/${work.id}?ep=1`);
+  }
+  if (Number.isFinite(requested) && requested !== ep && canRead) {
+    redirect(`/works/${work.id}?ep=${ep}`);
+  }
+
+  const current = episodes[ep - 1];
+  const prev = ep > 1 ? episodes[ep - 2] : undefined;
+  const next = ep < episodes.length ? episodes[ep] : undefined;
+  // 被他人买断：不展示正文试读
+  const markdown = buyoutTaken && !canRead ? "" : canRead ? current.body : previewMarkdown(current.body);
+  const discussions =
+    work.status === "published" ? listDiscussionsByWork(work.id, 40) : [];
+  const discussionCount = work.status === "published" ? countDiscussionsByWork(work.id) : 0;
 
   return (
-    <div className={canRead ? "wrap page" : "wrap page pay-space"}>
+    <div className="wrap page">
       <div className="work-layout">
         <header className="work-head">
-          <p className="kicker">
-            {kindLabel(work.kind)} · {categoryName(work.category)}
-          </p>
-          <h1>{work.title}</h1>
-          <div className="meta">
-            <span>{work.author}</span>
-            <span>{work.word_count} 字</span>
-            <span>{priceLabel(work.price)}</span>
-            <span>{formatDate(work.created_at)}</span>
-            {unlocked ? <span>已解锁</span> : null}
+          <img className="work-cover" src={`/covers/${work.id}`} alt="" />
+          <div>
+            <p className="kicker">
+              {kindLabel(work.kind)} · {categoryName(work.category)}
+              {episodes.length > 1 ? ` · 共 ${episodes.length} 集` : ""}
+            </p>
+            <h1>{work.title}</h1>
+            <div className="meta">
+              <span>{work.author}</span>
+              <span>{work.word_count} 字</span>
+              <span>{formatReads((work.read_count || 0) + (work.status === "published" ? 1 : 0))}</span>
+              {!showBuy ? <span>{priceText}</span> : null}
+              <span>{formatDate(work.created_at)}</span>
+              {iOwnBuyout ? <span>已买断</span> : unlocked && !buyoutTaken ? <span>已购买</span> : null}
+              {buyoutTaken && !iOwnBuyout && !isAuthor ? <span>已被买断</span> : null}
+            </div>
+            <p className="intro" style={{ marginTop: 10 }}>
+              {work.summary}
+            </p>
+            {showBuy ? (
+              <WorkPurchase
+                workId={work.id}
+                yuan={cashYuan}
+                loggedIn={Boolean(user)}
+                unlocked={unlocked && !buyoutTaken}
+                buyout={iOwnBuyout}
+                takenByOther={buyoutTaken && !iOwnBuyout}
+              />
+            ) : canDownload ? (
+              <p className="work-actions">
+                <a className="btn solid" href={`/api/works/${work.id}/download`} download>
+                  下载完整剧本
+                </a>
+              </p>
+            ) : null}
+            {work.status !== "published" ? <p className="banner">这篇没有通过审核，只有你自己看得到。</p> : null}
+            {buyoutTaken && !iOwnBuyout && !isAuthor ? (
+              <p className="banner">这篇已被买断，仅买断者可阅读，其他人无法再查看正文。</p>
+            ) : null}
           </div>
-          <p className="intro" style={{ marginTop: 10 }}>
-            {work.summary}
-          </p>
-          {work.status !== "published" ? <p className="banner">这篇没有通过审核，只有你自己看得到。</p> : null}
         </header>
-        {review ? <ReviewCard review={review} /> : null}
+        {review && (canRead || !buyoutTaken) ? <ReviewCard review={review} /> : null}
         <div className="work-main">
-          <Reader markdown={canRead ? work.content : previewMarkdown(work.content)} cut={!canRead} />
+          {buyoutTaken && !canRead ? (
+            <p className="empty">正文已对其他读者关闭。</p>
+          ) : (
+            <>
+              {episodes.length > 1 ? (
+                <p className="episode-label">
+                  第 {ep} 集 · {current.title}
+                  {!canRead ? <span className="hint">（试读）</span> : null}
+                </p>
+              ) : null}
+              <NoCopy enabled={canRead && work.price > 0 && !isAuthor}>
+                <Reader markdown={markdown} cut={!canRead} />
+              </NoCopy>
+              {canRead ? (
+                <EpisodeNav
+                  workId={work.id}
+                  current={ep}
+                  total={episodes.length}
+                  title={current.title}
+                  prevTitle={prev?.title}
+                  nextTitle={next?.title}
+                />
+              ) : episodes.length > 1 && !buyoutTaken ? (
+                <p className="hint episode-lock-hint">
+                  购买后可阅读全部 {episodes.length} 集，并用上一集 / 下一集翻页。
+                </p>
+              ) : null}
+            </>
+          )}
         </div>
       </div>
-      {!canRead ? (
-        <UnlockForm
-          workId={work.id}
-          price={work.price}
-          coins={user?.coins ?? 0}
-          loggedIn={Boolean(user)}
-          loginHref={`/login?next=${encodeURIComponent(`/works/${work.id}`)}`}
-        />
+
+      {work.status === "published" ? (
+        <section className="discussion-section" id="discussion">
+          <div className="section-title">
+            <h2>读者讨论{discussionCount > 0 ? ` · ${discussionCount}` : ""}</h2>
+            <a href={`/community?workId=${work.id}`}>引用到社区</a>
+          </div>
+          {user ? (
+            <WorkDiscussionForm workId={work.id} />
+          ) : (
+            <p className="empty">
+              <a href={`/login?next=${encodeURIComponent(`/works/${work.id}#discussion`)}`}>登录</a>
+              后参与讨论。
+            </p>
+          )}
+          <DiscussionList
+            items={discussions}
+            currentUserId={user?.id}
+            next={`/works/${work.id}#discussion`}
+          />
+        </section>
       ) : null}
     </div>
   );

@@ -5,8 +5,10 @@ import { logoutAction } from "@/lib/actions";
 import { getCurrentUser } from "@/lib/auth";
 import { categoryName } from "@/lib/categories";
 import { INVITER_COINS } from "@/lib/coins";
-import { getCheckinState, listByAuthor, listUnlocked } from "@/lib/db";
+import { getCheckinState, listByAuthor, listRequirementsByUser, listUnlocked } from "@/lib/db";
 import { priceLabel } from "@/lib/format";
+import { yuanLabel } from "@/lib/pricing";
+import { requirementStatusLabel } from "@/lib/requirements";
 
 export const metadata: Metadata = { title: "我的" };
 
@@ -16,6 +18,7 @@ export default async function MinePage({ searchParams }: { searchParams: Promise
   const params = await searchParams;
   const mine = listByAuthor(user.id);
   const unlocked = listUnlocked(user.id);
+  const requirements = listRequirementsByUser(user.id);
   const checkin = getCheckinState(user.id);
 
   return (
@@ -41,7 +44,7 @@ export default async function MinePage({ searchParams }: { searchParams: Promise
       </a>
       <div className="pair">
         <a className="panel" href="/wallet">
-          <span className="hint">金币余额，短剧和小说通用</span>
+          <span className="hint">金币余额，签到邀请仍可用</span>
           <p className="balance">
             {user.coins}
             <small>金币</small>
@@ -56,6 +59,34 @@ export default async function MinePage({ searchParams }: { searchParams: Promise
         </a>
       </div>
       <p className="hint">用手机浏览器打开后，选「添加到主屏幕」，会像一个应用一样全屏打开。</p>
+
+      <div className="section-title">
+        <h2>我的征稿</h2>
+        <a href="/requirements/new">发布</a>
+      </div>
+      {requirements.length === 0 ? (
+        <p className="empty">
+          还没有定制需求。<a href="/requirements/new">去发布征稿</a>
+        </p>
+      ) : (
+        <div className="list">
+          {requirements.map((item) => (
+            <a className="line" key={item.id} href={`/requirements/${item.id}`}>
+              <span>
+                <strong>{item.title}</strong>
+                <br />
+                <span className="hint">
+                  {yuanLabel(item.bounty_yuan)}
+                  {item.delivered_work_id ? " · 已交付" : ""}
+                </span>
+              </span>
+              <span className={`pill${item.status === "delivered" ? " ok" : item.status === "awaiting_pay" ? " bad" : ""}`}>
+                {requirementStatusLabel(item.status)}
+              </span>
+            </a>
+          ))}
+        </div>
+      )}
 
       <div className="section-title">
         <h2>我的投稿</h2>
@@ -93,7 +124,10 @@ export default async function MinePage({ searchParams }: { searchParams: Promise
           {unlocked.map((work) => (
             <a className="line" key={work.id} href={`/works/${work.id}`}>
               <span>{work.title}</span>
-              <span className="hint">{priceLabel(work.price)}</span>
+              <span className="hint">
+                {priceLabel(work.price)}
+                {work.price > 0 ? " · 可免费下载" : ""}
+              </span>
             </a>
           ))}
         </div>
