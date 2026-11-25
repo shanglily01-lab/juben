@@ -186,43 +186,88 @@ export function coverPaths(id: number) {
   return { dir, png: path.join(dir, `${id}.png`), svg: path.join(dir, `${id}.svg`) };
 }
 
-function promptFor(input: CoverInput) {
-  const excerpt = (input.content ?? "").replace(/\s+/g, " ").slice(0, 280);
+/** 从简介 + 正文抽出封面用的主剧情提示（不要书名水印）。 */
+export function promptFor(input: CoverInput) {
+  const raw = (input.content ?? "").replace(/\s+/g, " ").trim();
+  const beats = raw
+    .split(/(?<=[。！？\n])/)
+    .map((part) => part.trim())
+    .filter((part) => part.length >= 8)
+    .slice(0, 4)
+    .join("");
+  const plot = (input.summary || beats || input.title).replace(/\s+/g, " ").slice(0, 360);
+  const scene = (beats || raw).slice(0, 420);
   return [
-    "一张竖版电影海报画面，不要任何文字、字母、水印或logo。",
-    `类型：${categoryName(input.category)}。`,
-    `标题所写的故事：${input.title}。`,
-    `剧情：${input.summary}`,
-    excerpt ? `场面：${excerpt}` : "",
-    "只画一个能看出剧情的关键场面，人物清楚，光影写实，背景有环境。",
+    "Vertical cinematic movie poster, photorealistic, no text, no letters, no watermark, no logo, no title.",
+    `Genre: ${categoryName(input.category)} short drama.`,
+    `Story premise: ${plot}`,
+    scene ? `Key scene to depict: ${scene}` : "",
+    "Show one clear dramatic moment with readable characters, strong lighting, and environmental detail.",
   ]
     .filter(Boolean)
-    .join("");
+    .join(" ");
 }
 
-async function tryImage(input: CoverInput) {
-  const apiKey = process.env.AI_API_KEY?.trim();
-  const model = process.env.AI_IMAGE_MODEL?.trim();
-  if (!apiKey || !model) return false;
-  const base = (process.env.AI_BASE_URL?.trim() || "https://api.openai.com/v1").replace(/\/$/, "");
-  try {
+function imageConfig() {
+  const model = process.env.AI_IMAGE_MODEL?.trim() || "";
+  const apiKey = (process.env.AI_IMAGE_API_KEY || process.env.AI_API_KEY)?.trim() || "";
+  const base = (
+    process.env.AI_IMAGE_BASE_URL?.trim() ||
+    process.env.AI_BASE_URL?.trim() ||
+    "https://api.siliconflow.cn/v1"
+  ).replace(/\/$/, "");
+  const size = process.env.AI_IMAGE_SIZE?.trim() || "768x1024";
+  return { model, apiKey, base, size };
+}
+
+async function downloadImageBytes(url: string) {
+  const file = await fetch(url, { signal: AbortSignal.timeout(20000) });
+  if (!file.ok) return undefined;
+  const bytes = Buffer.from(await file.arrayBuffer());
+  return bytes.length >= 32 ? bytes : undefined;
+}
+
+type ImageApiPayload = {
+  data?: { b64_json?: string; url?: string }[];
+  images?: { b64_json?: string; url?: string }[];
+};
+
+async function requestCoverImage(base: string, apiKey: string, model: string, prompt: string, size: string) {
+  const bodies: Record<string, unknown>[] = [
+    // SiliconFlow / 多数兼容接口
+    { model, prompt, image_size: size, num_inference_steps: 20 },
+    // OpenAI 风格
+    { model, prompt, size, n: 1 },
+  ];
+  for (const body of bodies) {
     const response = await fetch(`${base}/images/generations`, {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model, prompt: promptFor(input), size: "1024x1536", n: 1 }),
-      signal: AbortSignal.timeout(25000),
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(45000),
     });
-    if (!response.ok) return false;
-    const payload = (await response.json()) as { data?: { b64_json?: string; url?: string }[] };
-    const first = payload.data?.[0];
-    let bytes: Buffer | undefined;
-    if (first?.b64_json) bytes = Buffer.from(first.b64_json, "base64");
-    else if (first?.url) {
-      const file = await fetch(first.url, { signal: AbortSignal.timeout(20000) });
-      if (!file.ok) return false;
-      bytes = Buffer.from(await file.arrayBuffer());
+    if (!response.ok) continue;
+    const payload = (await response.json()) as ImageApiPayload;
+    const first = payload.data?.[0] || payload.images?.[0];
+    if (!first) continue;
+    if (first.b64_json) {
+      const bytes = Buffer.from(first.b64_json, "base64");
+      if (bytes.length >= 32) return bytes;
     }
-    if (!bytes || bytes.length < 32) return false;
+    if (first.url) {
+      const bytes = await downloadImageBytes(first.url);
+      if (bytes) return bytes;
+    }
+  }
+  return undefined;
+}
+
+async function tryImage(input: CoverInput) {
+  const { model, apiKey, base, size } = imageConfig();
+  if (!apiKey || !model) return false;
+  try {
+    const bytes = await requestCoverImage(base, apiKey, model, promptFor(input), size);
+    if (!bytes) return false;
     const { dir, png, svg } = coverPaths(input.id);
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(png, bytes);

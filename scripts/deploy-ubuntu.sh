@@ -112,6 +112,11 @@ MOBEN_DATA_DIR=${DATA_DIR}
 # AI_BASE_URL=https://api.deepseek.com/v1
 # AI_API_KEY=
 # AI_MODEL=deepseek-chat
+# 封面图另配（DeepSeek 不能出图），例如 SiliconFlow：
+# AI_IMAGE_BASE_URL=https://api.siliconflow.cn/v1
+# AI_IMAGE_API_KEY=
+# AI_IMAGE_MODEL=black-forest-labs/FLUX.1-schnell
+# AI_IMAGE_SIZE=768x1024
 EOF
   chmod 600 "$ENV_FILE"
 else

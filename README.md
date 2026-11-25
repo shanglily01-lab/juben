@@ -24,14 +24,24 @@ npm test
 
 ## 审核和金币
 
-不配置模型时，用内置规则打分。要换成大模型，复制 `.env.example` 为 `.env.local`，填入兼容 OpenAI 的接口：
+不配置模型时，用内置规则打分。要换成大模型，复制 `.env.example` 为 `.env.local`。
+
+审稿用 DeepSeek（不能出图）；封面图另配 SiliconFlow 等图生接口，按主剧情生成竖版海报：
 
 ```
 AI_BASE_URL=https://api.deepseek.com/v1
-AI_API_KEY=你的密钥
+AI_API_KEY=你的_DeepSeek_密钥
 AI_MODEL=deepseek-chat
+
+AI_IMAGE_BASE_URL=https://api.siliconflow.cn/v1
+AI_IMAGE_API_KEY=你的_SiliconFlow_密钥
+AI_IMAGE_MODEL=black-forest-labs/FLUX.1-schnell
+AI_IMAGE_SIZE=768x1024
+
 SESSION_SECRET=一长串随机字符
 ```
+
+不配 `AI_IMAGE_MODEL` 时，封面回退到站内 SVG 模板图。
 
 注册后要到邮箱点开激活链接。激活成功赠送 20 金币。每天签到从 2 金币起，连续 7 天后每天 10。邀请的新用户激活后，邀请人得 15，新用户额外得 10。充值是演示入账，不会产生真实扣款。金币同时用来解锁短剧和小说。规则详见 `docs/金币签到与邀请.md`。
 
