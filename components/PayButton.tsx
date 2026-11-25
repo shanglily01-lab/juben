@@ -34,7 +34,6 @@ export function PayButton({
             onClick={() => setChannel(item.id)}
           >
             {item.label}
-            <small>{item.id}</small>
           </button>
         ))}
       </div>

@@ -221,12 +221,9 @@ button.buyout-done,
   font: inherit;
   cursor: pointer;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
 }
-.pay-channel small { color: var(--cream-dim); font-size: 11px; letter-spacing: 0.08em; }
 .pay-channel.active {
   border-color: #e0a31a;
   background: #fff6e0;

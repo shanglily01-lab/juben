@@ -23,7 +23,6 @@ export function PackList() {
             onClick={() => setChannel(item.id)}
           >
             {item.label}
-            <small>{item.id}</small>
           </button>
         ))}
       </div>
