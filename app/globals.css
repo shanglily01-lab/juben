@@ -1055,6 +1055,19 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
 .form .alert, .panel .alert { color: var(--cinnabar-deep); background: #ffe8e2; }
 .note { background: #e5f6ee; color: var(--pine); }
 .banner { padding: 10px 12px; border-radius: 12px; background: #ffe8e2; color: var(--cinnabar-deep); }
+.reject-box {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #fff4f0;
+  border: 1px solid rgba(194, 65, 42, 0.18);
+}
+.reject-box a { color: var(--cinnabar-deep); font-weight: 650; }
+.review.rejected {
+  border: 1px solid rgba(194, 65, 42, 0.22);
+  box-shadow: 0 8px 24px rgba(194, 65, 42, 0.08);
+}
+.review.rejected .score-line strong { color: var(--cinnabar-deep); }
 
 .search { display: flex; gap: 8px; }
 .search input { flex: 1; }

@@ -8,11 +8,11 @@ const LABELS = [
   ["completeness", "完整"],
 ] as const;
 
-export function ReviewCard({ review }: { review: Review }) {
+export function ReviewCard({ review, rejected = false }: { review: Review; rejected?: boolean }) {
   return (
-    <aside className="review">
+    <aside className={`review${rejected ? " rejected" : ""}`}>
       <div className="score-line">
-        <h2>审核 {review.grade}</h2>
+        <h2>{rejected ? "未通过 · 修改建议" : `审核 ${review.grade}`}</h2>
         <strong>{review.score.toFixed(1)}</strong>
       </div>
       <p>{review.summary}</p>
@@ -28,11 +28,14 @@ export function ReviewCard({ review }: { review: Review }) {
         ))}
       </ul>
       {review.advice.length > 0 ? (
-        <ul className="advice">
-          {review.advice.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
+        <>
+          {rejected ? <p className="hint" style={{ marginTop: 12 }}>请优先改这些点：</p> : null}
+          <ul className="advice">
+            {review.advice.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </>
       ) : null}
       <p className="hint">{review.source === "model" ? "模型审核" : "规则审核"}</p>
     </aside>

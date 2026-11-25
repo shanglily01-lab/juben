@@ -123,13 +123,30 @@ export default async function WorkPage({
                 </a>
               </p>
             ) : null}
-            {work.status !== "published" ? <p className="banner">这篇没有通过审核，只有你自己看得到。</p> : null}
+            {work.status !== "published" && isAuthor ? (
+              <div className="reject-box" role="status">
+                <p className="banner" style={{ margin: 0 }}>
+                  这篇没有通过审核，只有你自己看得到。
+                </p>
+                {review ? (
+                  <p className="hint" style={{ margin: "8px 0 0" }}>
+                    综合 {review.score.toFixed(1)} 分 · {review.grade}
+                    {review.advice[0] ? ` · ${review.advice[0]}` : ""}
+                  </p>
+                ) : null}
+                <p className="hint" style={{ margin: "8px 0 0" }}>
+                  请按下方审核意见改稿后，到<a href="/upload">投稿页</a>重新上传一版。
+                </p>
+              </div>
+            ) : null}
             {buyoutTaken && !iOwnBuyout && !isAuthor ? (
               <p className="banner">这篇已被买断，仅买断者可阅读，其他人无法再查看正文。</p>
             ) : null}
           </div>
         </header>
-        {review && (canRead || !buyoutTaken) ? <ReviewCard review={review} /> : null}
+        {review && (canRead || !buyoutTaken) ? (
+          <ReviewCard review={review} rejected={work.status !== "published"} />
+        ) : null}
         <div className="work-main">
           {buyoutTaken && !canRead ? (
             <p className="empty">正文已对其他读者关闭。</p>
