@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { isCategory } from "@/lib/categories";
 import { normalizeInviteCode } from "@/lib/codes";
 import { countWords, safeNext } from "@/lib/format";
-import { removeCoverFiles } from "@/lib/cover";
+import { ensureSvgCover, removeCoverFiles, upgradeCoverWithAi } from "@/lib/cover";
 import { extractWorkMeta } from "@/lib/extract-meta";
 import { clearSession, getCurrentUser, setSession } from "@/lib/auth";
 import {
@@ -178,21 +178,24 @@ export async function uploadAction(_prev: ActionState, formData: FormData): Prom
     return { error: "保存失败，请稍后再试" };
   }
 
-  // 封面异步尽力生成；失败不影响上架
+  const coverInput = {
+    id,
+    title,
+    summary,
+    category,
+    kind,
+    grade: review.grade,
+    content,
+  };
+  // 先立刻写入模板封面，保证书库有图；AI 出图后台升级，不挡上架跳转
   try {
-    const { createReviewCover } = await import("@/lib/cover");
-    await createReviewCover({
-      id,
-      title,
-      summary,
-      category,
-      kind,
-      grade: review.grade,
-      content,
-    });
-  } catch {
-    /* ignore */
+    ensureSvgCover(coverInput, true);
+  } catch (error) {
+    console.error("[cover] svg failed", id, error instanceof Error ? error.message : error);
   }
+  void upgradeCoverWithAi(coverInput).catch((error) => {
+    console.error("[cover] ai upgrade failed", id, error instanceof Error ? error.message : error);
+  });
 
   revalidateAll();
   redirect(`/works/${id}`);

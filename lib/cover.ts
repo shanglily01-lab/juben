@@ -209,20 +209,24 @@ export function promptFor(input: CoverInput) {
 }
 
 export function imageConfig() {
-  const model = process.env.AI_IMAGE_MODEL?.trim() || "";
   const apiKey = (process.env.AI_IMAGE_API_KEY || process.env.AI_API_KEY)?.trim() || "";
   const providerHint = (process.env.AI_IMAGE_PROVIDER || "").trim().toLowerCase();
+  const chatModel = process.env.AI_MODEL?.trim() || "";
   const base = (
     process.env.AI_IMAGE_BASE_URL?.trim() ||
     process.env.AI_BASE_URL?.trim() ||
     ""
   ).replace(/\/$/, "");
   const size = process.env.AI_IMAGE_SIZE?.trim() || "";
+  let model = process.env.AI_IMAGE_MODEL?.trim() || "";
   const useGemini =
     providerHint === "gemini" ||
     providerHint === "google" ||
     /^gemini/i.test(model) ||
+    /^gemini/i.test(chatModel) ||
     /generativelanguage\.googleapis\.com/i.test(base);
+  // 只配了 Gemini 审稿 key、没写 IMAGE_MODEL 时，默认用 Nano Banana 出图
+  if (!model && apiKey && useGemini) model = "gemini-nano-banana-2.1";
   return {
     model,
     apiKey,
@@ -325,19 +329,26 @@ async function requestOpenAiStyleImage(base: string, apiKey: string, model: stri
 
 async function tryImage(input: CoverInput) {
   const { model, apiKey, base, size, useGemini } = imageConfig();
-  if (!apiKey || !model) return false;
+  if (!apiKey || !model) {
+    console.warn("[cover] skip AI image: missing AI_IMAGE_MODEL / API key", { id: input.id, model: !!model, key: !!apiKey });
+    return false;
+  }
   try {
     const prompt = promptFor(input);
     const bytes = useGemini
       ? await requestGeminiImage(apiKey, model, prompt, size)
       : await requestOpenAiStyleImage(base, apiKey, model, prompt, size);
-    if (!bytes) return false;
+    if (!bytes) {
+      console.warn("[cover] AI image empty response", { id: input.id, model, useGemini });
+      return false;
+    }
     const { dir, png, svg } = coverPaths(input.id);
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(png, bytes);
     fs.rmSync(svg, { force: true });
     return true;
-  } catch {
+  } catch (error) {
+    console.error("[cover] AI image failed", input.id, error instanceof Error ? error.message : error);
     return false;
   }
 }
@@ -346,16 +357,19 @@ export function ensureSvgCover(input: CoverInput, force = false) {
   const { dir, png, svg } = coverPaths(input.id);
   if (!force && (fs.existsSync(png) || fs.existsSync(svg))) return;
   fs.mkdirSync(dir, { recursive: true });
-  fs.rmSync(png, { force: true });
+  if (force) fs.rmSync(png, { force: true });
   fs.writeFileSync(svg, renderCoverSvg(input));
 }
 
+/** 先落 SVG 模板，再尽力换成 AI 图；上传路径应先调 ensureSvgCover 再后台 upgrade。 */
 export async function createReviewCover(input: CoverInput) {
-  const { png, svg } = coverPaths(input.id);
-  fs.rmSync(png, { force: true });
-  fs.rmSync(svg, { force: true });
-  if (await tryImage(input)) return;
   ensureSvgCover(input, true);
+  await tryImage(input);
+}
+
+/** 仅尝试 AI 出图升级（已有 SVG 时用）。 */
+export async function upgradeCoverWithAi(input: CoverInput) {
+  return tryImage(input);
 }
 
 export function readCover(id: number) {

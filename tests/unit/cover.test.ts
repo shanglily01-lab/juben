@@ -51,4 +51,16 @@ describe("剧情封面", () => {
     expect(config.useGemini).toBe(true);
     expect(config.size).toBe("2:3");
   });
+
+  it("只配了 Gemini 审稿时默认补齐出图模型", () => {
+    process.env.AI_API_KEY = "test";
+    process.env.AI_MODEL = "gemini-3.8-flash";
+    delete process.env.AI_IMAGE_MODEL;
+    delete process.env.AI_IMAGE_PROVIDER;
+    delete process.env.AI_IMAGE_BASE_URL;
+    delete process.env.AI_BASE_URL;
+    const config = imageConfig();
+    expect(config.useGemini).toBe(true);
+    expect(config.model).toBe("gemini-nano-banana-2.1");
+  });
 });
