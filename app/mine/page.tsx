@@ -177,8 +177,12 @@ export default async function MinePage({ searchParams }: { searchParams: Promise
                 </span>
               </a>
               <span className="mine-work-actions">
-                <span className={work.status === "published" ? "pill ok" : "pill bad"}>
-                  {work.status === "published" ? "已上架" : "未过审"}
+                <span
+                  className={
+                    work.status === "published" ? "pill ok" : work.status === "pending" ? "pill" : "pill bad"
+                  }
+                >
+                  {work.status === "published" ? "已上架" : work.status === "pending" ? "待审" : "未过审"}
                 </span>
                 {work.status !== "published" ? <DeleteRejectedWorkForm workId={work.id} /> : null}
               </span>

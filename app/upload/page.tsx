@@ -14,14 +14,16 @@ export default async function UploadPage() {
     <div className="wrap page">
       <p className="kicker">投稿</p>
       <h1>上传剧本</h1>
-      <p className="intro">只需上传一份 Markdown 剧本。标题、简介、分类由 AI 识别，封面按主剧情生成。</p>
+      <p className="intro">
+        现阶段先批量上传入库：只需 Markdown。标题、简介、分类会自动识别；审核与封面稍后再统一处理。
+      </p>
       <ul className="rules upload-rules">
         <li>格式：仅支持 .md / .markdown（也可用纯文本粘贴）。</li>
-        <li>字数：至少 200 字才能送审；建议 400 字以上；上限 10 万字。</li>
-        <li>文件：单个文件不超过 2MB。</li>
-        <li>内容：请写清场次、人物、△动作和对白；过短、注水、人物分不清会被拒。</li>
-        <li>流程：提交后自动识别元数据并审核；过审即上架，未过只你自己看得到意见。</li>
-        <li>封面：过审后按主剧情 AI 生成竖版封面，无需自传图。</li>
+        <li>字数：至少 200 字；建议 400 字以上；上限 10 万字。</li>
+        <li>文件：单个文件不超过 2MB；每人最多保存 50 篇。</li>
+        <li>内容：请写清场次、人物、△动作和对白，方便稍后过审。</li>
+        <li>流程：上传后状态为「待审」，不上架；只有你自己看得到，可随时删除。</li>
+        <li>后续：攒够一批后再统一过审，并按主剧情生成封面。</li>
       </ul>
       <UploadForm />
     </div>

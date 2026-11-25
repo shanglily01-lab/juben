@@ -316,7 +316,7 @@ function migrate(db: DatabaseSync) {
     db.prepare("UPDATE users SET username = '大黄书' WHERE email = 'editor@moben.local'").run();
   }
 
-  // SCHEMA 15：清掉编辑室历史样本；把够字数的未过审用户稿先放行上架。
+  // 清掉编辑室历史样本；用户稿先待审入库，不自动放行。
   db.exec(`
     DELETE FROM discussions WHERE work_id IN (
       SELECT id FROM works WHERE author_id IN (SELECT id FROM users WHERE email = 'editor@moben.local')
@@ -331,12 +331,6 @@ function migrate(db: DatabaseSync) {
       SELECT id FROM works WHERE author_id IN (SELECT id FROM users WHERE email = 'editor@moben.local')
     );
     DELETE FROM works WHERE author_id IN (SELECT id FROM users WHERE email = 'editor@moben.local');
-
-    UPDATE works
-    SET status = 'published',
-        score = CASE WHEN score < 5.5 THEN 5.5 ELSE score END,
-        grade = CASE WHEN grade = '未过' OR grade IS NULL OR grade = '' THEN '乙' ELSE grade END
-    WHERE status = 'rejected' AND word_count >= 200;
   `);
 }
 
@@ -629,7 +623,7 @@ export function hasUnlock(userId: number, workId: number) {
 
 export class WorkLimitError extends Error {
   constructor() {
-    super("每人最多保存 30 篇稿件");
+    super("每人最多保存 50 篇稿件");
   }
 }
 
@@ -643,14 +637,18 @@ export function insertWork(input: {
   price: number;
   review: Review;
   wordCount: number;
+  /** pending=先入库待审；默认按审核结果上架或拒稿 */
+  status?: "published" | "rejected" | "pending";
 }) {
   const now = nowIso();
   return txn((db) => {
     const count = db.prepare("SELECT COUNT(*) AS c FROM works WHERE author_id = ?").get(input.authorId) as {
       c: number;
     };
-    if (count.c >= 30) throw new WorkLimitError();
+    if (count.c >= 50) throw new WorkLimitError();
     const episodeCount = Math.max(1, splitEpisodes(input.content).length);
+    const status =
+      input.status || (input.review.decision === "approve" ? "published" : "rejected");
     const info = db
       .prepare(
         `INSERT INTO works (
@@ -666,7 +664,7 @@ export function insertWork(input: {
         input.content,
         input.authorId,
         input.price,
-        input.review.decision === "approve" ? "published" : "rejected",
+        status,
         input.review.score,
         input.review.grade,
         JSON.stringify(input.review),

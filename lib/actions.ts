@@ -5,8 +5,7 @@ import { redirect } from "next/navigation";
 import { isCategory } from "@/lib/categories";
 import { normalizeInviteCode } from "@/lib/codes";
 import { countWords, safeNext } from "@/lib/format";
-import { reviewWork } from "@/lib/ai";
-import { createReviewCover, removeCoverFiles } from "@/lib/cover";
+import { removeCoverFiles } from "@/lib/cover";
 import { extractWorkMeta } from "@/lib/extract-meta";
 import { clearSession, getCurrentUser, setSession } from "@/lib/auth";
 import {
@@ -140,24 +139,25 @@ export async function logoutAction() {
 export async function uploadAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const user = await getCurrentUser();
   if (!user) return { error: "请先登录再投稿" };
-  if (countWorksByAuthor(user.id) >= 30) return { error: "每人最多保存 30 篇稿件" };
+  if (countWorksByAuthor(user.id) >= 50) return { error: "每人最多保存 50 篇稿件" };
 
   const content = text(formData, "content").replace(/\r\n/g, "\n");
   const words = countWords(content);
-  if (words < 200) return { error: "正文至少 200 字，才能送去审核" };
+  if (words < 200) return { error: "正文至少 200 字" };
   if (words > 100000) return { error: "正文请控制在 10 万字以内" };
 
-  // 标题 / 简介 / 分类由 AI（或本地规则）从 Markdown 识别；封面在过审后按主剧情生成。
+  // 现阶段先批量入库：只识别元数据，暂不过审、不上架、不生成封面。
   const meta = await extractWorkMeta(content);
   const { title, summary, category, kind } = meta;
-
-  const review = await reviewWork({
-    title,
-    kind,
-    category,
-    summary,
-    content,
-  });
+  const review = {
+    score: 0,
+    grade: "待审",
+    decision: "reject" as const,
+    source: "local" as const,
+    summary: "已入库，等待统一审核。",
+    advice: ["先攒够一批稿再统一过审与生成封面。"],
+    dimensions: { plot: 0, character: 0, pacing: 0, language: 0, completeness: 0 },
+  };
 
   let id = 0;
   try {
@@ -171,21 +171,13 @@ export async function uploadAction(_prev: ActionState, formData: FormData): Prom
       price: 0,
       review,
       wordCount: words,
+      status: "pending",
     });
   } catch (error) {
     if (error instanceof WorkLimitError) return { error: error.message };
     return { error: "保存失败，请稍后再试" };
   }
 
-  await createReviewCover({
-    id,
-    title,
-    summary,
-    category,
-    kind,
-    grade: review.grade,
-    content,
-  });
   revalidateAll();
   redirect(`/works/${id}`);
 }

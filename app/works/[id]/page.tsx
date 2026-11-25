@@ -127,16 +127,26 @@ export default async function WorkPage({
             {work.status !== "published" && isAuthor ? (
               <div className="reject-box" role="status">
                 <p className="banner" style={{ margin: 0 }}>
-                  这篇没有通过审核，只有你自己看得到。
+                  {work.status === "pending"
+                    ? "这篇已入库待审，尚未上架，只有你自己看得到。"
+                    : "这篇没有通过审核，只有你自己看得到。"}
                 </p>
-                {review ? (
+                {work.status !== "pending" && review ? (
                   <p className="hint" style={{ margin: "8px 0 0" }}>
                     综合 {review.score.toFixed(1)} 分 · {review.grade}
                     {review.advice[0] ? ` · ${review.advice[0]}` : ""}
                   </p>
                 ) : null}
                 <p className="hint" style={{ margin: "8px 0 0" }}>
-                  请按下方审核意见改稿后，到<a href="/upload">投稿页</a>重新上传一版；不需要了可直接删除。
+                  {work.status === "pending" ? (
+                    <>
+                      可以继续到<a href="/upload">投稿页</a>上传下一部；不需要了可删除。
+                    </>
+                  ) : (
+                    <>
+                      请按下方审核意见改稿后，到<a href="/upload">投稿页</a>重新上传一版；不需要了可直接删除。
+                    </>
+                  )}
                 </p>
                 <DeleteRejectedWorkForm workId={work.id} />
               </div>
@@ -146,8 +156,8 @@ export default async function WorkPage({
             ) : null}
           </div>
         </header>
-        {review && (canRead || !buyoutTaken) ? (
-          <ReviewCard review={review} rejected={work.status !== "published"} />
+        {review && work.status !== "pending" && (canRead || !buyoutTaken) ? (
+          <ReviewCard review={review} rejected={work.status === "rejected"} />
         ) : null}
         <div className="work-main">
           {buyoutTaken && !canRead ? (

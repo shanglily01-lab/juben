@@ -22,6 +22,7 @@ export default defineConfig({
     env: {
       MOBEN_DATA_DIR: dataDir,
       SESSION_SECRET: "moben-test-secret",
+      ENABLE_SEED: "1",
       AI_API_KEY: "",
       SMTP_HOST: "",
       SMTP_PORT: "",
