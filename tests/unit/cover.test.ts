@@ -1,8 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
-import { promptFor, renderCoverSvg } from "@/lib/cover";
+import { imageConfig, promptFor, renderCoverSvg } from "@/lib/cover";
 
 describe("剧情封面", () => {
+  const original = { ...process.env };
+  afterEach(() => {
+    for (const key of Object.keys(process.env)) {
+      if (!(key in original)) delete process.env[key];
+    }
+    Object.assign(process.env, original);
+  });
+
   it("把标题和简介画进海报，并转义标记", () => {
     const svg = renderCoverSvg({
       title: "末班夜车<雪>",
@@ -30,5 +38,17 @@ describe("剧情封面", () => {
     expect(prompt).toContain("no text");
     expect(prompt).toContain("暴雪夜");
     expect(prompt).toContain("钥匙");
+  });
+
+  it("模型名带 gemini 时走 Google 出图配置", () => {
+    process.env.AI_API_KEY = "test";
+    process.env.AI_IMAGE_MODEL = "gemini-2.5-flash-image";
+    delete process.env.AI_IMAGE_PROVIDER;
+    delete process.env.AI_IMAGE_BASE_URL;
+    delete process.env.AI_BASE_URL;
+    delete process.env.AI_IMAGE_SIZE;
+    const config = imageConfig();
+    expect(config.useGemini).toBe(true);
+    expect(config.size).toBe("2:3");
   });
 });

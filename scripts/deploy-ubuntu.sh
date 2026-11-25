@@ -109,14 +109,13 @@ MOBEN_DATA_DIR=${DATA_DIR}
 # SMTP_USER=
 # SMTP_PASS=
 # MAIL_FROM=大黄书 <noreply@${DOMAIN}>
-# AI_BASE_URL=https://api.deepseek.com/v1
+# 推荐 Gemini 审稿+封面：
+# AI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
 # AI_API_KEY=
-# AI_MODEL=deepseek-chat
-# 封面图另配（DeepSeek 不能出图），例如 SiliconFlow：
-# AI_IMAGE_BASE_URL=https://api.siliconflow.cn/v1
-# AI_IMAGE_API_KEY=
-# AI_IMAGE_MODEL=black-forest-labs/FLUX.1-schnell
-# AI_IMAGE_SIZE=768x1024
+# AI_MODEL=gemini-2.0-flash
+# AI_IMAGE_PROVIDER=gemini
+# AI_IMAGE_MODEL=gemini-2.5-flash-image
+# AI_IMAGE_SIZE=2:3
 EOF
   chmod 600 "$ENV_FILE"
 else

@@ -208,16 +208,28 @@ export function promptFor(input: CoverInput) {
     .join(" ");
 }
 
-function imageConfig() {
+export function imageConfig() {
   const model = process.env.AI_IMAGE_MODEL?.trim() || "";
   const apiKey = (process.env.AI_IMAGE_API_KEY || process.env.AI_API_KEY)?.trim() || "";
+  const providerHint = (process.env.AI_IMAGE_PROVIDER || "").trim().toLowerCase();
   const base = (
     process.env.AI_IMAGE_BASE_URL?.trim() ||
     process.env.AI_BASE_URL?.trim() ||
-    "https://api.siliconflow.cn/v1"
+    ""
   ).replace(/\/$/, "");
-  const size = process.env.AI_IMAGE_SIZE?.trim() || "768x1024";
-  return { model, apiKey, base, size };
+  const size = process.env.AI_IMAGE_SIZE?.trim() || "";
+  const useGemini =
+    providerHint === "gemini" ||
+    providerHint === "google" ||
+    /^gemini/i.test(model) ||
+    /generativelanguage\.googleapis\.com/i.test(base);
+  return {
+    model,
+    apiKey,
+    base: base || (useGemini ? "https://generativelanguage.googleapis.com/v1beta" : "https://api.siliconflow.cn/v1"),
+    size: size || (useGemini ? "2:3" : "768x1024"),
+    useGemini,
+  };
 }
 
 async function downloadImageBytes(url: string) {
@@ -232,11 +244,60 @@ type ImageApiPayload = {
   images?: { b64_json?: string; url?: string }[];
 };
 
-async function requestCoverImage(base: string, apiKey: string, model: string, prompt: string, size: string) {
+type GeminiPart = {
+  text?: string;
+  inlineData?: { mimeType?: string; data?: string };
+  inline_data?: { mime_type?: string; data?: string };
+};
+
+/** Google Gemini / Nano Banana 原生出图。 */
+async function requestGeminiImage(apiKey: string, model: string, prompt: string, aspectRatio: string) {
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
   const bodies: Record<string, unknown>[] = [
-    // SiliconFlow / 多数兼容接口
+    {
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: {
+        responseModalities: ["IMAGE"],
+        imageConfig: { aspectRatio },
+      },
+    },
+    {
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: {
+        responseModalities: ["TEXT", "IMAGE"],
+        imageConfig: { aspectRatio },
+      },
+    },
+  ];
+  for (const body of bodies) {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey,
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(60000),
+    });
+    if (!response.ok) continue;
+    const payload = (await response.json()) as {
+      candidates?: { content?: { parts?: GeminiPart[] } }[];
+    };
+    const parts = payload.candidates?.[0]?.content?.parts || [];
+    for (const part of parts) {
+      const inline = part.inlineData || part.inline_data;
+      const data = inline?.data;
+      if (!data) continue;
+      const bytes = Buffer.from(data, "base64");
+      if (bytes.length >= 32) return bytes;
+    }
+  }
+  return undefined;
+}
+
+async function requestOpenAiStyleImage(base: string, apiKey: string, model: string, prompt: string, size: string) {
+  const bodies: Record<string, unknown>[] = [
     { model, prompt, image_size: size, num_inference_steps: 20 },
-    // OpenAI 风格
     { model, prompt, size, n: 1 },
   ];
   for (const body of bodies) {
@@ -263,10 +324,13 @@ async function requestCoverImage(base: string, apiKey: string, model: string, pr
 }
 
 async function tryImage(input: CoverInput) {
-  const { model, apiKey, base, size } = imageConfig();
+  const { model, apiKey, base, size, useGemini } = imageConfig();
   if (!apiKey || !model) return false;
   try {
-    const bytes = await requestCoverImage(base, apiKey, model, promptFor(input), size);
+    const prompt = promptFor(input);
+    const bytes = useGemini
+      ? await requestGeminiImage(apiKey, model, prompt, size)
+      : await requestOpenAiStyleImage(base, apiKey, model, prompt, size);
     if (!bytes) return false;
     const { dir, png, svg } = coverPaths(input.id);
     fs.mkdirSync(dir, { recursive: true });
