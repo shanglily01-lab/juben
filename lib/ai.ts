@@ -56,10 +56,14 @@ export function reviewLocal(input: ReviewInput): Review {
     completeness: 6.2,
   };
 
-  if (chars < 400) {
+  // 起步阶段放宽：满 200 字即可送审；400 字以上更稳，但不一律拒掉。
+  if (chars < 200) {
     hardFail = true;
-    dimensions.completeness = chars < 200 ? 2 : 4.2;
-    advice.push("篇幅不够。短剧至少写完一场，小说至少写完一个能独立读的片段。");
+    dimensions.completeness = 2;
+    advice.push("篇幅不够。短剧至少写完一场，再送审。");
+  } else if (chars < 400) {
+    dimensions.completeness = 5.8;
+    advice.push("体量偏紧。补足到 400 字以上、写完一场关键戏，会更稳。");
   } else if (chars < 700) {
     dimensions.completeness = 6.8;
     advice.push(
@@ -74,10 +78,13 @@ export function reviewLocal(input: ReviewInput): Review {
     advice.push("篇幅偏长，投稿前先删掉重复交代。");
   }
 
-  if (enders < 5) {
+  if (enders < 3) {
     hardFail = true;
     dimensions.language = 3.5;
     advice.push("完整的句子太少，还不像可以送审的稿。");
+  } else if (enders < 5) {
+    dimensions.language -= 0.4;
+    advice.push("句子偏少，再补几句对白或叙述会更清楚。");
   }
 
   const compact = text.replace(/\s+/g, "");
@@ -141,7 +148,7 @@ export function reviewLocal(input: ReviewInput): Review {
   if (hardFail) score = Math.min(score, 5.4);
   score = clamp(score);
 
-  const decision = !hardFail && score >= 6 ? "approve" : "reject";
+  const decision = !hardFail && score >= 5 ? "approve" : "reject";
   const grade = decision === "approve" ? gradeOf(score) : "未过";
   const extra = lowestAdvice(dimensions, input.kind);
   const merged = [...advice, ...extra].filter((item, index, list) => list.indexOf(item) === index).slice(0, 3);
@@ -185,7 +192,8 @@ function normalizeModel(data: Partial<Review>, local: Review): Review {
   const advice = Array.isArray(data.advice)
     ? data.advice.map((item) => String(item)).filter(Boolean).slice(0, 3)
     : local.advice;
-  const decision = score < 6 || data.decision === "reject" ? "reject" : "approve";
+  // 起步阶段：分数够就放行，避免模型过严导致库内一篇都没有。
+  const decision = score < 5 ? "reject" : "approve";
   return {
     score,
     grade: decision === "approve" ? gradeOf(score) : "未过",
@@ -209,7 +217,7 @@ export async function reviewWork(input: ReviewInput): Promise<Review> {
     `请审核这篇${kindName}，分类是${categoryName(input.category)}。`,
     "只输出一个 JSON 对象，不要写 Markdown。",
     "字段：score（1到10的数字），decision（approve 或 reject），summary（80字以内中文），advice（最多3条中文字符串），dimensions（plot、character、pacing、language、completeness，每个1到10）。",
-    "少于400字、注水、人物无法分辨、没有完整场面，必须 reject。综合低于6分必须 reject。",
+    "少于200字、明显注水堆字、完全没有场面，才必须 reject。综合低于5分才 reject；满200字且能读完一场的短剧，优先 approve。",
     `标题：${input.title}`,
     `简介：${input.summary}`,
     "正文：",

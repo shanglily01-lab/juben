@@ -56,6 +56,9 @@ export function readSeedWorks(): SeedWork[] {
 }
 
 export function seedIfEmpty(db: DatabaseSync) {
+  // 默认不再导入历史样本；需要演示稿时再设 ENABLE_SEED=1。
+  if (process.env.ENABLE_SEED?.trim() !== "1") return;
+
   const existing = db.prepare("SELECT COUNT(*) AS c FROM works").get() as { c: number };
   if (existing.c > 0) return;
 

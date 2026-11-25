@@ -97,9 +97,10 @@ describe("本地审核", () => {
         }),
       ),
     );
-    const rejected = await reviewWork(sample);
-    expect(rejected.decision).toBe("reject");
-    expect(rejected.grade).toBe("未过");
+    // 分数够时即使模型写 reject 也放行，避免空库
+    const stillPass = await reviewWork(sample);
+    expect(stillPass.decision).toBe("approve");
+    expect(stillPass.grade).not.toBe("未过");
 
     vi.stubGlobal("fetch", vi.fn(async () => new Response("no", { status: 500 })));
     expect((await reviewWork(sample)).source).toBe("local");

@@ -100,7 +100,7 @@ type CheckinRow = {
 };
 
 const globalDb = globalThis as unknown as { __moben?: DatabaseSync; __mobenSchema?: number };
-const SCHEMA = 14;
+const SCHEMA = 15;
 const ACTIVATION_MS = 24 * 60 * 60 * 1000;
 const RESEND_MS = 60 * 1000;
 
@@ -315,6 +315,29 @@ function migrate(db: DatabaseSync) {
   if (!editorNameTaken) {
     db.prepare("UPDATE users SET username = '大黄书' WHERE email = 'editor@moben.local'").run();
   }
+
+  // SCHEMA 15：清掉编辑室历史样本；把够字数的未过审用户稿先放行上架。
+  db.exec(`
+    DELETE FROM discussions WHERE work_id IN (
+      SELECT id FROM works WHERE author_id IN (SELECT id FROM users WHERE email = 'editor@moben.local')
+    );
+    DELETE FROM unlocks WHERE work_id IN (
+      SELECT id FROM works WHERE author_id IN (SELECT id FROM users WHERE email = 'editor@moben.local')
+    );
+    UPDATE pay_orders SET work_id = NULL WHERE work_id IN (
+      SELECT id FROM works WHERE author_id IN (SELECT id FROM users WHERE email = 'editor@moben.local')
+    );
+    UPDATE requirements SET delivered_work_id = NULL WHERE delivered_work_id IN (
+      SELECT id FROM works WHERE author_id IN (SELECT id FROM users WHERE email = 'editor@moben.local')
+    );
+    DELETE FROM works WHERE author_id IN (SELECT id FROM users WHERE email = 'editor@moben.local');
+
+    UPDATE works
+    SET status = 'published',
+        score = CASE WHEN score < 5.5 THEN 5.5 ELSE score END,
+        grade = CASE WHEN grade = '未过' OR grade IS NULL OR grade = '' THEN '乙' ELSE grade END
+    WHERE status = 'rejected' AND word_count >= 200;
+  `);
 }
 
 function freshInviteCode(db: DatabaseSync) {
