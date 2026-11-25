@@ -216,29 +216,74 @@ button.buyout-done,
 .buyout-card { margin-top: 8px; }
 .pay-btn-wrap { width: 100%; }
 .pay-btn-wrap .btn { width: 100%; }
-.pay-channels {
+.pay-radios {
+  margin: 0 0 14px;
+  padding: 0;
+  border: 0;
   display: grid;
-  grid-template-columns: 1fr 1fr;
   gap: 8px;
-  margin-bottom: 10px;
 }
-.pay-channel {
-  min-height: 48px;
+.pay-radios:disabled { opacity: 0.6; }
+.pay-radios-legend {
+  padding: 0;
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.pay-radio {
+  display: grid;
+  grid-template-columns: 20px 22px 1fr;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 14px;
   border-radius: 14px;
   border: 1px solid var(--line-strong);
   background: #fff;
-  color: var(--ink);
-  font: inherit;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  user-select: none;
 }
-.pay-channel.active {
-  border-color: #e0a31a;
-  background: #fff6e0;
-  box-shadow: inset 0 0 0 1px #e0a31a;
-  font-weight: 700;
+.pay-radio input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+.pay-radio-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid #c8beb0;
+  background: #fff;
+  box-shadow: inset 0 0 0 3px #fff;
+  justify-self: center;
+}
+.pay-radio.on .pay-radio-dot {
+  border-color: currentColor;
+  background: currentColor;
+  box-shadow: inset 0 0 0 3px #fff;
+}
+.pay-radio.wechat.on {
+  color: #07c160;
+  border-color: rgba(7, 193, 96, 0.45);
+  background: #f3fcf6;
+}
+.pay-radio.alipay.on {
+  color: #1677ff;
+  border-color: rgba(22, 119, 255, 0.4);
+  background: #f3f8ff;
+}
+.pay-radio-text {
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--ink);
+}
+.pay-radio.on .pay-radio-text { color: inherit; }
+.pay-brand-ico {
+  display: block;
+  flex: 0 0 auto;
+  border-radius: 50%;
 }
 
 .tabbar {

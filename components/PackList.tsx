@@ -2,8 +2,9 @@
 
 import { useState, useTransition } from "react";
 
+import { PayChannelPicker } from "@/components/PayChannelPicker";
 import { PACKS } from "@/lib/coins";
-import { PAY_CHANNELS, type PayChannelId, yuanLabel } from "@/lib/pricing";
+import { type PayChannelId, yuanLabel } from "@/lib/pricing";
 
 export function PackList() {
   const [channel, setChannel] = useState<PayChannelId>("005");
@@ -13,19 +14,7 @@ export function PackList() {
 
   return (
     <div className="packs-wrap">
-      <div className="pay-channels" role="group" aria-label="支付方式">
-        {PAY_CHANNELS.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            className={`pay-channel${channel === item.id ? " active" : ""}`}
-            disabled={pending}
-            onClick={() => setChannel(item.id)}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
+      <PayChannelPicker value={channel} onChange={setChannel} disabled={pending} />
       {error ? (
         <p className="alert" role="alert">
           {error}

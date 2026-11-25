@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from "react";
 
-import { PAY_CHANNELS, type PayChannelId } from "@/lib/pricing";
+import { PayChannelPicker } from "@/components/PayChannelPicker";
+import { type PayChannelId } from "@/lib/pricing";
 
 /** 单篇购买 / 买断；必须带 workId。 */
 export function PayButton({
@@ -24,19 +25,7 @@ export function PayButton({
 
   return (
     <div className="pay-btn-wrap">
-      <div className="pay-channels" role="group" aria-label="支付方式">
-        {PAY_CHANNELS.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            className={`pay-channel${channel === item.id ? " active" : ""}`}
-            disabled={disabled || pending}
-            onClick={() => setChannel(item.id)}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
+      <PayChannelPicker value={channel} onChange={setChannel} disabled={disabled || pending} />
       <button
         type="button"
         className={className}
