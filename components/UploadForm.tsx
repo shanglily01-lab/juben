@@ -18,8 +18,8 @@ export function UploadForm() {
   async function onFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (file.size > 400_000) {
-      setFileError("文件请小于 400KB");
+    if (file.size > 2_000_000) {
+      setFileError("文件请小于 2MB");
       return;
     }
     if (!/\.(md|markdown|txt)$/i.test(file.name) && !/^text\//.test(file.type || "")) {
