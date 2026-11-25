@@ -8,7 +8,7 @@ import { getInviteProfile } from "@/lib/db";
 import { formatDate } from "@/lib/format";
 import { requestOrigin } from "@/lib/origin";
 
-export const metadata: Metadata = { title: "邀请" };
+export const metadata: Metadata = { title: "邀请好友" };
 
 export default async function InvitePage() {
   const user = await getCurrentUser();
@@ -18,15 +18,39 @@ export default async function InvitePage() {
   const link = `${origin || ""}/register?invite=${profile.code}`;
 
   return (
-    <div className="wrap page">
+    <div className="wrap page invite-page">
       <p className="kicker">邀请</p>
-      <h1>把大黄书剧本小说网递给朋友</h1>
-      <p className="intro">
-        朋友用你的邀请码注册，并激活邮箱后，你得到 {INVITER_COINS} 金币，对方在注册赠送之外再得 {INVITEE_COINS} 金币。已经有账号的人不能补填。
-      </p>
-      <p className="invite-code">{profile.code}</p>
-      <CopyField value={link} />
-      <div className="pair">
+      <h1>邀请好友得金币</h1>
+
+      <section className="invite-hero" aria-label="邀请奖励">
+        <p className="invite-hero-label">好友激活邮箱后</p>
+        <div className="invite-hero-rewards">
+          <div>
+            <span className="hint">你获得</span>
+            <p className="balance">
+              +{INVITER_COINS}
+              <small>金币</small>
+            </p>
+          </div>
+          <div className="invite-hero-divider" aria-hidden />
+          <div>
+            <span className="hint">对方额外</span>
+            <p className="balance">
+              +{INVITEE_COINS}
+              <small>金币</small>
+            </p>
+          </div>
+        </div>
+        <p className="gold-tip">已有账号不能补填邀请码 · 仅限新注册并激活</p>
+      </section>
+
+      <div className="invite-share panel">
+        <span className="hint">你的邀请码</span>
+        <p className="invite-code">{profile.code}</p>
+        <CopyField value={link} />
+      </div>
+
+      <div className="pair invite-stats">
         <div className="panel">
           <span className="hint">成功邀请</span>
           <p className="balance">
@@ -42,7 +66,9 @@ export default async function InvitePage() {
           </p>
         </div>
       </div>
+
       {profile.invitedBy ? <p className="note">你由 {profile.invitedBy} 邀请而来。</p> : null}
+
       <div className="section-title">
         <h2>邀请记录</h2>
       </div>

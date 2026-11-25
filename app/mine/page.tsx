@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { logoutAction } from "@/lib/actions";
 import { getCurrentUser } from "@/lib/auth";
 import { categoryName } from "@/lib/categories";
-import { INVITER_COINS } from "@/lib/coins";
+import { CHECKIN_REWARDS, INVITER_COINS } from "@/lib/coins";
 import { getCheckinState, listByAuthor, listRequirementsByUser, listUnlocked } from "@/lib/db";
 import { priceLabel } from "@/lib/format";
 import { coinLabel } from "@/lib/pricing";
@@ -20,45 +20,113 @@ export default async function MinePage({ searchParams }: { searchParams: Promise
   const unlocked = listUnlocked(user.id);
   const requirements = listRequirementsByUser(user.id);
   const checkin = getCheckinState(user.id);
+  const checkinHint = checkin.checkedIn
+    ? `已连续 ${checkin.streak} 天`
+    : `今日可领 ${checkin.reward} 金币`;
+  const maxCheckin = CHECKIN_REWARDS[CHECKIN_REWARDS.length - 1];
 
   return (
-    <div className="wrap page">
-      <div className="mine-head">
-        <div>
+    <div className="wrap page mine-page">
+      <div className="mine-profile">
+        <div className="mine-avatar" aria-hidden>
+          {user.username.slice(0, 1).toUpperCase()}
+        </div>
+        <div className="mine-profile-text">
           <p className="kicker">我的</p>
           <h1>{user.username}</h1>
         </div>
         <form action={logoutAction}>
-          <button className="btn ghost" type="submit">
+          <button className="btn ghost mine-logout" type="submit">
             退出
           </button>
         </form>
       </div>
+
       {params.activated === "1" ? <p className="note">邮箱已激活，金币已入账。</p> : null}
-      <a className="panel checkin-card" href="/checkin">
-        <span className="hint">{checkin.checkedIn ? "今日已签" : "今日未签"}</span>
-        <p className="balance">
-          {checkin.checkedIn ? `连续 ${checkin.streak} 天` : `+${checkin.reward}`}
-          <small>{checkin.checkedIn ? "明天继续" : "去签到"}</small>
-        </p>
-      </a>
-      <div className="pair">
-        <a className="panel" href="/wallet">
-          <span className="hint">金币余额，签到邀请仍可用</span>
+
+      <section className="gold-wallet" aria-label="金币">
+        <div className="gold-wallet-main">
+          <span className="hint">当前金币</span>
           <p className="balance">
             {user.coins}
-            <small>金币</small>
+            <small>金</small>
           </p>
+          <p className="gold-tip">1 元 = 10 金币 · 充值即时到账</p>
+        </div>
+        <a className="btn solid gold-wallet-cta" href="/wallet">
+          去充值
         </a>
-        <a className="panel" href="/invite">
-          <span className="hint">邀请好友注册</span>
-          <p className="balance">
-            {INVITER_COINS}
-            <small>金币 / 人</small>
-          </p>
+      </section>
+
+      <nav className="mine-menu" aria-label="常用功能">
+        <a className="mine-menu-row" href="/wallet">
+          <span className="mine-menu-ico" aria-hidden>
+            金
+          </span>
+          <span className="mine-menu-body">
+            <strong>金币充值</strong>
+            <small>解锁 / 买断 / 征稿都扣金币</small>
+          </span>
+          <span className="mine-menu-meta">{user.coins} 金</span>
+          <span className="mine-menu-chev" aria-hidden>
+            ›
+          </span>
         </a>
-      </div>
-      <p className="hint">用手机浏览器打开后，选「添加到主屏幕」，会像一个应用一样全屏打开。</p>
+        <a className="mine-menu-row" href="/checkin">
+          <span className="mine-menu-ico checkin" aria-hidden>
+            签
+          </span>
+          <span className="mine-menu-body">
+            <strong>每日签到领 {maxCheckin} 金币</strong>
+            <small>{checkinHint}</small>
+          </span>
+          <span className={`mine-menu-meta${checkin.checkedIn ? " done" : ""}`}>
+            {checkin.checkedIn ? "已签" : "去签"}
+          </span>
+          <span className="mine-menu-chev" aria-hidden>
+            ›
+          </span>
+        </a>
+        <a className="mine-menu-row" href="/invite">
+          <span className="mine-menu-ico invite" aria-hidden>
+            邀
+          </span>
+          <span className="mine-menu-body">
+            <strong>邀请好友</strong>
+            <small>好友激活后你得 {INVITER_COINS} 金币</small>
+          </span>
+          <span className="mine-menu-meta">+{INVITER_COINS}</span>
+          <span className="mine-menu-chev" aria-hidden>
+            ›
+          </span>
+        </a>
+        <a className="mine-menu-row" href="/upload">
+          <span className="mine-menu-ico upload" aria-hidden>
+            投
+          </span>
+          <span className="mine-menu-body">
+            <strong>投稿短剧</strong>
+            <small>上架后可售卖与买断</small>
+          </span>
+          <span className="mine-menu-chev" aria-hidden>
+            ›
+          </span>
+        </a>
+        <a className="mine-menu-row" href="/requirements/new">
+          <span className="mine-menu-ico req" aria-hidden>
+            征
+          </span>
+          <span className="mine-menu-body">
+            <strong>发布征稿</strong>
+            <small>赏金用金币支付，最低 1000 金</small>
+          </span>
+          <span className="mine-menu-chev" aria-hidden>
+            ›
+          </span>
+        </a>
+      </nav>
+
+      <p className="hint mine-install">用手机浏览器打开后，选「添加到主屏幕」，会像一个应用一样全屏打开。</p>
 
       <div className="section-title">
         <h2>我的征稿</h2>
@@ -90,6 +158,7 @@ export default async function MinePage({ searchParams }: { searchParams: Promise
 
       <div className="section-title">
         <h2>我的投稿</h2>
+        <a href="/upload">投稿</a>
       </div>
       {mine.length === 0 ? (
         <p className="empty">

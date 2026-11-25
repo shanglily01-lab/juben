@@ -7,7 +7,7 @@ import { CHECKIN_REWARDS, INVITEE_COINS, INVITER_COINS, SIGNUP_COINS } from "@/l
 import { listLedger } from "@/lib/db";
 import { formatDate } from "@/lib/format";
 
-export const metadata: Metadata = { title: "金币" };
+export const metadata: Metadata = { title: "金币充值" };
 
 export default async function WalletPage({
   searchParams,
@@ -21,33 +21,54 @@ export default async function WalletPage({
   const need = Math.max(0, Math.floor(Number(params.need) || 0));
 
   return (
-    <div className="wrap page">
+    <div className="wrap page wallet-page">
       <p className="kicker">钱包</p>
-      <h1>金币</h1>
-      <p className="balance">
-        {user.coins}
-        <small>可用</small>
-      </p>
-      <p className="intro">1 元 = 10 金。微信 / 支付宝只用于充值；解锁、买断、征稿都扣金币。</p>
+      <h1>金币充值</h1>
+
+      <section className="gold-wallet wallet-hero" aria-label="余额">
+        <div className="gold-wallet-main">
+          <span className="hint">当前可用</span>
+          <p className="balance">
+            {user.coins}
+            <small>金币</small>
+          </p>
+          <p className="gold-tip">1 元 = 10 金币 · 微信 / 支付宝只用于充值</p>
+        </div>
+      </section>
+
       {params.ok === "1" ? <p className="note">充值已到账。</p> : null}
       {need > 0 && user.coins < need ? (
         <p className="note">本次大约还需要 {need - user.coins} 金，选一档充值即可。</p>
       ) : null}
-      <ul className="rules">
-        <li>注册并激活邮箱后赠送 {SIGNUP_COINS} 金币。</li>
+
+      <div className="earn-strip" aria-label="免费得币">
+        <a className="earn-chip" href="/checkin">
+          <strong>签到</strong>
+          <span>最高 +{CHECKIN_REWARDS[CHECKIN_REWARDS.length - 1]}</span>
+        </a>
+        <a className="earn-chip" href="/invite">
+          <strong>邀请</strong>
+          <span>你得 +{INVITER_COINS}</span>
+        </a>
+        <div className="earn-chip static">
+          <strong>注册</strong>
+          <span>激活 +{SIGNUP_COINS}</span>
+        </div>
+      </div>
+
+      <div className="section-title">
+        <h2>选择档位</h2>
+      </div>
+      <PackList />
+
+      <ul className="rules wallet-rules">
+        <li>解锁单篇、买断、征稿赏金一律扣金币。</li>
         <li>
-          每日签到从 {CHECKIN_REWARDS[0]} 起，连续 7 天后每天 {CHECKIN_REWARDS[CHECKIN_REWARDS.length - 1]}。
-          <a href="/checkin">去签到</a>
-        </li>
-        <li>
-          邀请一位新用户，你得 {INVITER_COINS}，对方额外得 {INVITEE_COINS}。<a href="/invite">去邀请</a>
+          邀请好友激活后，你得 {INVITER_COINS}，对方额外得 {INVITEE_COINS}。
         </li>
         <li>充值按档位真实付款，到账后即可消费。</li>
       </ul>
-      <div className="section-title">
-        <h2>充值</h2>
-      </div>
-      <PackList />
+
       <div className="section-title">
         <h2>流水</h2>
       </div>

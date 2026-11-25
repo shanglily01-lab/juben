@@ -35,12 +35,14 @@ export function PackList() {
       <div className="packs">
         {PACKS.map((pack) => (
           <div className="pack" key={pack.id}>
-            <p>
-              {pack.label}
-              <br />
-              <strong>{pack.coins} 金币</strong>
-            </p>
-            <p className="hint">{yuanLabel(pack.yuan)} · 1 元 = 10 金</p>
+            <div className="pack-info">
+              <span className="pack-label">{pack.label}</span>
+              <p className="pack-coins">
+                <strong>{pack.coins}</strong>
+                <small>金币</small>
+              </p>
+              <p className="hint">约 {Math.round(pack.coins / pack.yuan)} 金 / 元</p>
+            </div>
             <button
               className="btn solid"
               type="button"
@@ -69,7 +71,7 @@ export function PackList() {
                 });
               }}
             >
-              {pending && pendingId === pack.id ? "跳转支付…" : `充值 ${yuanLabel(pack.yuan)}`}
+              {pending && pendingId === pack.id ? "跳转支付…" : yuanLabel(pack.yuan)}
             </button>
           </div>
         ))}

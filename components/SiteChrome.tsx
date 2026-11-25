@@ -11,7 +11,13 @@ export function SiteChrome({ user, children }: { user: ChromeUser; children: Rea
   const ranks = path.startsWith("/hot");
   const community = path.startsWith("/community");
   const upload = path.startsWith("/upload");
+  const mine =
+    path.startsWith("/mine") ||
+    path.startsWith("/wallet") ||
+    path.startsWith("/invite") ||
+    path.startsWith("/checkin");
   const uploadHref = user ? "/upload" : "/login?next=/upload";
+  const mineHref = user ? "/mine" : "/login?next=/mine";
 
   return (
     <div className="app">
@@ -41,6 +47,9 @@ export function SiteChrome({ user, children }: { user: ChromeUser; children: Rea
           <a href={uploadHref} aria-current={upload ? "page" : undefined}>
             投稿
           </a>
+          <a href={mineHref} aria-current={mine ? "page" : undefined}>
+            我的
+          </a>
         </nav>
         <form className="desk-search" action="/browse">
           <input name="q" placeholder="搜索短剧" aria-label="搜索短剧" />
@@ -50,7 +59,7 @@ export function SiteChrome({ user, children }: { user: ChromeUser; children: Rea
             搜索
           </a>
           {user ? (
-            <a className="coin-pill" href="/mine" aria-label={`我的，${user.coins} 金币`}>
+            <a className="coin-pill" href="/wallet" aria-label={`金币 ${user.coins}，去充值`}>
               <span className="dot" />
               {user.coins}
             </a>
@@ -81,8 +90,8 @@ export function SiteChrome({ user, children }: { user: ChromeUser; children: Rea
         <a className="tab" href="/community" aria-current={community ? "page" : undefined}>
           社区
         </a>
-        <a className="tab" href={uploadHref} aria-current={upload ? "page" : undefined}>
-          投稿
+        <a className="tab" href={mineHref} aria-current={mine ? "page" : undefined}>
+          我的
         </a>
       </nav>
     </div>
