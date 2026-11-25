@@ -16,9 +16,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   return (
     <div className="wrap page">
       <section className="auth">
-        <span className="auth-seal" aria-hidden>
-          书
-        </span>
+        <img className="auth-seal" src="/logo-mark.svg" width={52} height={52} alt="" />
         <p className="kicker">大黄书</p>
         <h1>登录</h1>
         <p className="intro">投稿、看审核、解锁付费篇，都用这一个账号。</p>

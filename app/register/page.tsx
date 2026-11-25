@@ -22,9 +22,7 @@ export default async function RegisterPage({
   return (
     <div className="wrap page">
       <section className="auth">
-        <span className="auth-seal" aria-hidden>
-          书
-        </span>
+        <img className="auth-seal" src="/logo-mark.svg" width={52} height={52} alt="" />
         <p className="kicker">大黄书</p>
         <h1>注册</h1>
         <p className="intro">

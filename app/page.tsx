@@ -45,7 +45,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           </div>
         </div>
         <div className="hero-mark" aria-hidden>
-          <span className="hero-seal">书</span>
+          <img className="hero-seal" src="/logo-mark.svg" width={78} height={78} alt="" />
           <span className="hero-vert">短剧剧本</span>
         </div>
       </section>

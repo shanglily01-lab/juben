@@ -26,9 +26,7 @@ export function SiteChrome({ user, children }: { user: ChromeUser; children: Rea
       </a>
       <header className="topbar">
         <a className="logo" href="/">
-          <span className="logo-seal" aria-hidden>
-            书
-          </span>
+          <img className="logo-seal" src="/logo-mark.svg" width={32} height={32} alt="" />
           <span className="logo-name">
             <strong>大黄书</strong>
             <small>短剧剧本</small>
