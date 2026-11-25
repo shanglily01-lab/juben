@@ -250,40 +250,19 @@ describe("签到、充值、解锁、投稿", () => {
   it("太短的稿送不进审核，够格的稿上架，自己的稿不能解锁", async () => {
     const user = await register("庚");
     const current = await activate(user.token);
-    const summary = "这是一段用来测试投稿的简介。";
-    const tooShort = await uploadAction(
-      empty,
-      form({
-        title: "太短",
-        summary,
-        kind: "script",
-        category: "urban",
-        price: "0",
-        content: "只有几个字。",
-      }),
-    );
+    const tooShort = await uploadAction(empty, form({ content: "只有几个字。" }));
     expect(tooShort.error).toContain("至少 200 字");
 
     const script = readSeedWorks().find((work) => work.kind === "script");
     expect(script).toBeTruthy();
     if (!script) return;
-    const uploaded = await redirectUrl(() =>
-      uploadAction(
-        empty,
-        form({
-          title: script.title,
-          summary: script.summary,
-          kind: script.kind,
-          category: script.category,
-          price: "6",
-          content: script.content,
-        }),
-      ),
-    );
+    const uploaded = await redirectUrl(() => uploadAction(empty, form({ content: script.content })));
     const workId = Number(uploaded.replace("/works/", ""));
     const detail = getWorkDetail(workId);
     expect(detail?.status).toBe("published");
     expect(detail?.author_id).toBe(current.id);
+    expect(detail?.title.length).toBeGreaterThanOrEqual(2);
+    expect(detail?.summary.length).toBeGreaterThanOrEqual(10);
     expect((await unlockAction(empty, form({ workId: String(workId) }))).error).toBe("这是你自己的稿件");
 
     for (let index = 0; index < 29; index += 1) {
@@ -307,20 +286,8 @@ describe("签到、充值、解锁、投稿", () => {
         wordCount: countWords("占位"),
       });
     }
-    expect(
-      (
-        await uploadAction(
-          empty,
-          form({
-            title: "第三十一篇",
-            summary,
-            kind: "script",
-            category: "urban",
-            price: "0",
-            content: script.content,
-          }),
-        )
-      ).error,
-    ).toBe("每人最多保存 30 篇稿件");
+    expect((await uploadAction(empty, form({ content: script.content }))).error).toBe(
+      "每人最多保存 30 篇稿件",
+    );
   });
 });

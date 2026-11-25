@@ -7,6 +7,7 @@ import { normalizeInviteCode } from "@/lib/codes";
 import { countWords, safeNext } from "@/lib/format";
 import { reviewWork } from "@/lib/ai";
 import { createReviewCover } from "@/lib/cover";
+import { extractWorkMeta } from "@/lib/extract-meta";
 import { clearSession, getCurrentUser, setSession } from "@/lib/auth";
 import {
   buyoutWorkWithCoins,
@@ -140,31 +141,18 @@ export async function uploadAction(_prev: ActionState, formData: FormData): Prom
   if (!user) return { error: "请先登录再投稿" };
   if (countWorksByAuthor(user.id) >= 30) return { error: "每人最多保存 30 篇稿件" };
 
-  const title = text(formData, "title");
-  const summary = text(formData, "summary");
-  const kind = text(formData, "kind");
-  const category = text(formData, "category");
-  const priceRaw = text(formData, "price");
   const content = text(formData, "content").replace(/\r\n/g, "\n");
-
-  if (title.length < 2 || title.length > 30 || /[\r\n]/.test(title)) {
-    return { error: "标题请写 2 到 30 个字" };
-  }
-  if (summary.length < 10 || summary.length > 100) {
-    return { error: "简介请写 10 到 100 个字" };
-  }
-  if (kind !== "script") return { error: "目前只收短剧剧本" };
-  if (!isCategory(category)) return { error: "请选择分类" };
-  if (priceRaw && !/^\d{1,2}$/.test(priceRaw)) return { error: "定价请填 0 到 99 的整数" };
-  const price = priceRaw ? Number(priceRaw) : 0;
-  if (price > 99) return { error: "定价请填 0 到 99 的整数" };
   const words = countWords(content);
   if (words < 200) return { error: "正文至少 200 字，才能送去审核" };
   if (words > 20000) return { error: "正文请控制在 2 万字以内" };
 
+  // 标题 / 简介 / 分类由 AI（或本地规则）从 Markdown 识别；封面在过审后按主剧情生成。
+  const meta = await extractWorkMeta(content);
+  const { title, summary, category, kind } = meta;
+
   const review = await reviewWork({
     title,
-    kind: kind as Kind,
+    kind,
     category,
     summary,
     content,
@@ -174,12 +162,12 @@ export async function uploadAction(_prev: ActionState, formData: FormData): Prom
   try {
     id = insertWork({
       title,
-      kind: kind as Kind,
+      kind,
       category,
       summary,
       content,
       authorId: user.id,
-      price,
+      price: 0,
       review,
       wordCount: words,
     });
@@ -193,7 +181,7 @@ export async function uploadAction(_prev: ActionState, formData: FormData): Prom
     title,
     summary,
     category,
-    kind: kind as Kind,
+    kind,
     grade: review.grade,
     content,
   });

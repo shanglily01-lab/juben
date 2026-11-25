@@ -13,9 +13,9 @@ export default async function UploadPage() {
   return (
     <div className="wrap page">
       <p className="kicker">投稿</p>
-      <h1>把稿放进匣子</h1>
+      <h1>上传剧本</h1>
       <p className="intro">
-        可以从手机里选一个 Markdown 文件，也可以直接写。提交后马上审核：过了就上架，不过会留下意见，只有你自己看得到。
+        只需上传一份 Markdown。标题、简介、分类由 AI 识别，封面按主剧情生成；过审即上架，未过会留下意见，只有你自己看得到。
       </p>
       <UploadForm />
     </div>
