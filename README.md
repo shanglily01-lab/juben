@@ -42,7 +42,13 @@ SESSION_SECRET=一长串随机字符
 
 （`gemini-2.0-flash` 已下线；审稿用 `gemini-3.8-flash`，封面用 `gemini-nano-banana-2.1`。）
 
-密钥在 https://aistudio.google.com/apikey 申请。也可用 DeepSeek 审稿 + SiliconFlow 出图，见 `.env.example`。不配图生模型时，封面回退到站内 SVG 模板。
+密钥在 https://aistudio.google.com/apikey 申请。也可用 DeepSeek 审稿 + SiliconFlow 出图，见 `.env.example`。
+
+上传会先写 SVG 模板封面，再后台用 AI 换图。已上架但没封面时，服务器可跑：
+
+```
+cd /opt/dahuangshu && sudo -u dahuangshu node scripts/backfill-covers.mjs
+```
 
 注册后要到邮箱点开激活链接。激活成功赠送 20 金币。每天签到从 2 金币起，连续 7 天后每天 10。邀请的新用户激活后，邀请人得 15，新用户额外得 10。充值是演示入账，不会产生真实扣款。金币同时用来解锁短剧和小说。规则详见 `docs/金币签到与邀请.md`。
 
