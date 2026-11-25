@@ -19,13 +19,8 @@ export function RequirementForm() {
         标题
         <input name="title" required maxLength={80} placeholder="一句话说清要什么剧" />
       </label>
-      <label>
-        类型
-        <select name="kind" defaultValue="script" required>
-          <option value="script">短剧剧本</option>
-          <option value="novel">小说</option>
-        </select>
-      </label>
+      <input type="hidden" name="kind" value="script" />
+      <p className="hint">征稿类型：短剧剧本</p>
       <label>
         分类
         <select name="category" defaultValue={CATEGORIES[0].slug} required>

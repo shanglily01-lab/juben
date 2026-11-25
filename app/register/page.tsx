@@ -30,7 +30,7 @@ export default async function RegisterPage({
         <p className="intro">
           {invite
             ? `邀请码 ${invite.toUpperCase()} 已填好。激活后到账 ${SIGNUP_COINS} 金币，有效邀请再加 ${INVITEE_COINS}。`
-            : `短剧和小说共用一个账号。激活邮箱后到账 ${SIGNUP_COINS} 金币。`}
+            : `短剧剧本站共用一个账号。激活邮箱后到账 ${SIGNUP_COINS} 金币。`}
         </p>
         <AuthForm mode="register" next={next} invite={invite} />
       </section>

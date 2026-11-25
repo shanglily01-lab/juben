@@ -23,7 +23,7 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
         {user.coins}
         <small>可用</small>
       </p>
-      <p className="intro">同一份余额可以解锁短剧和小说。签到、邀请和演示充值都记在下面的流水里。</p>
+      <p className="intro">同一份余额可以解锁短剧。签到、邀请和演示充值都记在下面的流水里。</p>
       {params.ok === "1" ? <p className="note">演示充值已到账。</p> : null}
       <ul className="rules">
         <li>注册并激活邮箱后赠送 {SIGNUP_COINS} 金币。</li>

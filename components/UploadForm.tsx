@@ -6,13 +6,12 @@ import { uploadAction } from "@/lib/actions";
 import { SubmitButton } from "@/components/SubmitButton";
 import { CATEGORIES } from "@/lib/categories";
 import { countWords } from "@/lib/format";
-import type { ActionState, Kind } from "@/lib/types";
+import type { ActionState } from "@/lib/types";
 
 const initial: ActionState = { error: "" };
 
 export function UploadForm() {
   const [state, formAction] = useActionState(uploadAction, initial);
-  const [kind, setKind] = useState<Kind>("script");
   const [content, setContent] = useState("");
   const [fileError, setFileError] = useState("");
 
@@ -29,16 +28,8 @@ export function UploadForm() {
 
   return (
     <form className="form" action={formAction}>
-      <div className="choice">
-        <label>
-          <input type="radio" name="kind" value="script" checked={kind === "script"} onChange={() => setKind("script")} />
-          短剧剧本
-        </label>
-        <label>
-          <input type="radio" name="kind" value="novel" checked={kind === "novel"} onChange={() => setKind("novel")} />
-          小说
-        </label>
-      </div>
+      <input type="hidden" name="kind" value="script" />
+      <p className="hint">目前只收短剧剧本。</p>
       <label className="field">
         <span>标题</span>
         <input name="title" required minLength={2} maxLength={30} placeholder="不超过 30 个字" />
@@ -72,7 +63,7 @@ export function UploadForm() {
           required
           value={content}
           onChange={(event) => setContent(event.target.value)}
-          placeholder={kind === "script" ? "建议包含场次、人物、△动作和对白。" : "直接粘贴章节，或从 Markdown 文件读入。"}
+          placeholder="建议包含场次、人物、△动作和对白。"
         />
         <p className="hint">{countWords(content)} 字 · 至少 200 字才会送审，400 字以上才有机会通过</p>
       </div>

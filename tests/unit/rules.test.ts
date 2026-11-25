@@ -119,8 +119,8 @@ describe("格式", () => {
     expect(safeMarkdownUrl("https://example.com/a")).toBe("https://example.com/a");
     expect(safeMarkdownUrl("/works/1")).toBe("/works/1");
     expect(browseHref({})).toBe("/browse");
-    expect(browseHref({ kind: "novel", category: "urban", q: "电梯" })).toBe(
-      "/browse?kind=novel&category=urban&q=%E7%94%B5%E6%A2%AF",
+    expect(browseHref({ category: "urban", q: "电梯" })).toBe(
+      "/browse?category=urban&q=%E7%94%B5%E6%A2%AF",
     );
   });
 

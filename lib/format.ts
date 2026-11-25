@@ -156,7 +156,6 @@ export function safeNext(value: string | null | undefined, fallback = "/") {
 
 export function browseHref(options: { kind?: string; category?: string; q?: string }) {
   const params = new URLSearchParams();
-  if (options.kind === "script" || options.kind === "novel") params.set("kind", options.kind);
   if (options.category) params.set("category", options.category);
   if (options.q) params.set("q", options.q);
   const query = params.toString();

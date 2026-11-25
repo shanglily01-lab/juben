@@ -236,7 +236,7 @@ describe("签到、充值、解锁、投稿", () => {
       form({
         title: "太短",
         summary,
-        kind: "novel",
+        kind: "script",
         category: "urban",
         price: "0",
         content: "只有几个字。",
@@ -244,19 +244,19 @@ describe("签到、充值、解锁、投稿", () => {
     );
     expect(tooShort.error).toContain("至少 200 字");
 
-    const novel = readSeedWorks().find((work) => work.kind === "novel");
-    expect(novel).toBeTruthy();
-    if (!novel) return;
+    const script = readSeedWorks().find((work) => work.kind === "script");
+    expect(script).toBeTruthy();
+    if (!script) return;
     const uploaded = await redirectUrl(() =>
       uploadAction(
         empty,
         form({
-          title: novel.title,
-          summary: novel.summary,
-          kind: novel.kind,
-          category: novel.category,
+          title: script.title,
+          summary: script.summary,
+          kind: script.kind,
+          category: script.category,
           price: "6",
-          content: novel.content,
+          content: script.content,
         }),
       ),
     );
@@ -269,7 +269,7 @@ describe("签到、充值、解锁、投稿", () => {
     for (let index = 0; index < 29; index += 1) {
       insertWork({
         title: `占位${index}`,
-        kind: "novel",
+        kind: "script",
         category: "urban",
         summary: "占位稿，不送审。",
         content: "占位",
@@ -294,10 +294,10 @@ describe("签到、充值、解锁、投稿", () => {
           form({
             title: "第三十一篇",
             summary,
-            kind: "novel",
+            kind: "script",
             category: "urban",
             price: "0",
-            content: novel.content,
+            content: script.content,
           }),
         )
       ).error,

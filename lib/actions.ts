@@ -145,7 +145,7 @@ export async function uploadAction(_prev: ActionState, formData: FormData): Prom
   if (summary.length < 10 || summary.length > 100) {
     return { error: "简介请写 10 到 100 个字" };
   }
-  if (kind !== "script" && kind !== "novel") return { error: "请选择短剧或小说" };
+  if (kind !== "script") return { error: "目前只收短剧剧本" };
   if (!isCategory(category)) return { error: "请选择分类" };
   if (priceRaw && !/^\d{1,2}$/.test(priceRaw)) return { error: "定价请填 0 到 99 的整数" };
   const price = priceRaw ? Number(priceRaw) : 0;
@@ -267,7 +267,7 @@ export async function createRequirementAction(_prev: ActionState, formData: Form
   const bountyYuan = parseBountyYuan(formData.get("bounty"));
 
   if (title.length < 2 || title.length > 80) return { error: "标题 2–80 字" };
-  if (kindRaw !== "script" && kindRaw !== "novel") return { error: "请选择短剧或小说" };
+  if (kindRaw !== "script") return { error: "目前只征短剧剧本" };
   if (!isCategory(category)) return { error: "请选择分类" };
   if (brief.length < 20 || brief.length > 4000) return { error: "内容要求 20–4000 字" };
   if (referenceText.length > 500) return { error: "对标说明最多 500 字" };

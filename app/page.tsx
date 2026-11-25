@@ -20,9 +20,6 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const scripts = listWorks({ kind: "script", limit: 6 })
     .filter((work) => work.id !== featured?.id)
     .slice(0, 4);
-  const novels = listWorks({ kind: "novel", limit: 6 })
-    .filter((work) => work.id !== featured?.id)
-    .slice(0, 4);
 
   return (
     <div className="wrap page">
@@ -36,11 +33,11 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
             读完再解锁。
           </h1>
           <p className="lede">
-            悬疑、历史、灾难、穿越。大黄书收来的稿和注册用户的投稿放在一起，先自动审核评级，付费篇按集数与质量计价。
+            悬疑、历史、灾难、穿越。大黄书收来的短剧剧本和注册用户的投稿放在一起，先自动审核评级，付费篇按集数与质量计价。
           </p>
           <div className="hero-actions">
             <a className="btn solid" href="/browse">
-              进入书库
+              浏览短剧
             </a>
             <a className="btn ghost" href="/hot">
               查看榜单
@@ -49,7 +46,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         </div>
         <div className="hero-mark" aria-hidden>
           <span className="hero-seal">书</span>
-          <span className="hero-vert">剧本小说</span>
+          <span className="hero-vert">短剧剧本</span>
         </div>
       </section>
 
@@ -97,14 +94,14 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         <section className="rank-board">
           <div className="section-title">
             <h2>热度榜</h2>
-            <a href="/hot">更多</a>
+            <a href="/hot?tab=hot">更多</a>
           </div>
           {hotReads.length === 0 ? <p className="empty">暂无</p> : <HotRank works={hotReads} metric="reads" />}
         </section>
         <section className="rank-board">
           <div className="section-title">
             <h2>热购榜</h2>
-            <a href="/hot">更多</a>
+            <a href="/hot?tab=buy">更多</a>
           </div>
           {hotBuys.length === 0 ? (
             <p className="empty">暂无成交</p>
@@ -115,7 +112,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         <section className="rank-board">
           <div className="section-title">
             <h2>推荐榜</h2>
-            <a href="/hot">更多</a>
+            <a href="/hot?tab=rec">更多</a>
           </div>
           {recommendRank.length === 0 ? (
             <p className="empty">暂无</p>
@@ -125,8 +122,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         </section>
       </div>
 
-      <Shelf title="推荐短剧" href="/browse?kind=script" works={scripts} />
-      <Shelf title="推荐小说" href="/browse?kind=novel" works={novels} />
+      <Shelf title="推荐短剧" href="/browse" works={scripts} />
 
       <div className="section-title">
         <h2>怎么用</h2>
