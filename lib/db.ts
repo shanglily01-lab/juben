@@ -594,6 +594,25 @@ export function listByAuthor(authorId: number) {
   ).map(toPublic);
 }
 
+/** 仅作者可删未过审稿；已上架不可删。 */
+export function deleteRejectedWork(workId: number, userId: number) {
+  return txn((db) => {
+    const work = db.prepare("SELECT id, author_id, status FROM works WHERE id = ?").get(workId) as
+      | { id: number; author_id: number; status: string }
+      | undefined;
+    if (!work) return { ok: false as const, error: "找不到这篇" };
+    if (work.author_id !== userId) return { ok: false as const, error: "只能删除自己的稿" };
+    if (work.status === "published") return { ok: false as const, error: "已上架的稿不能删除" };
+
+    db.prepare("DELETE FROM discussions WHERE work_id = ?").run(workId);
+    db.prepare("DELETE FROM unlocks WHERE work_id = ?").run(workId);
+    db.prepare("UPDATE pay_orders SET work_id = NULL WHERE work_id = ?").run(workId);
+    db.prepare("UPDATE requirements SET delivered_work_id = NULL WHERE delivered_work_id = ?").run(workId);
+    db.prepare("DELETE FROM works WHERE id = ?").run(workId);
+    return { ok: true as const };
+  });
+}
+
 export function listUnlocked(userId: number) {
   return many<WorkRow>(
     `${WORK_CARD}

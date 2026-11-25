@@ -364,3 +364,9 @@ export function readCover(id: number) {
   if (fs.existsSync(svg)) return { body: fs.readFileSync(svg), type: "image/svg+xml" };
   return undefined;
 }
+
+export function removeCoverFiles(id: number) {
+  const { png, svg } = coverPaths(id);
+  fs.rmSync(png, { force: true });
+  fs.rmSync(svg, { force: true });
+}

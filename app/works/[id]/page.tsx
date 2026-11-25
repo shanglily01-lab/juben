@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
+import { DeleteRejectedWorkForm } from "@/components/DeleteRejectedWorkForm";
 import { WorkDiscussionForm } from "@/components/DiscussionForm";
 import { DiscussionList } from "@/components/DiscussionList";
 import { EpisodeNav } from "@/components/EpisodeNav";
@@ -135,8 +136,9 @@ export default async function WorkPage({
                   </p>
                 ) : null}
                 <p className="hint" style={{ margin: "8px 0 0" }}>
-                  请按下方审核意见改稿后，到<a href="/upload">投稿页</a>重新上传一版。
+                  请按下方审核意见改稿后，到<a href="/upload">投稿页</a>重新上传一版；不需要了可直接删除。
                 </p>
+                <DeleteRejectedWorkForm workId={work.id} />
               </div>
             ) : null}
             {buyoutTaken && !iOwnBuyout && !isAuthor ? (

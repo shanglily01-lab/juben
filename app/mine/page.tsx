@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { DeleteRejectedWorkForm } from "@/components/DeleteRejectedWorkForm";
 import { logoutAction } from "@/lib/actions";
 import { getCurrentUser } from "@/lib/auth";
 import { categoryName } from "@/lib/categories";
@@ -167,18 +168,21 @@ export default async function MinePage({ searchParams }: { searchParams: Promise
       ) : (
         <div className="list">
           {mine.map((work) => (
-            <a className="line" key={work.id} href={`/works/${work.id}`}>
-              <span>
+            <div className="line mine-work" key={work.id}>
+              <a href={`/works/${work.id}`}>
                 <strong>{work.title}</strong>
                 <br />
                 <span className="hint">
                   {categoryName(work.category)} · {priceLabel(work.price)} · {work.grade}
                 </span>
+              </a>
+              <span className="mine-work-actions">
+                <span className={work.status === "published" ? "pill ok" : "pill bad"}>
+                  {work.status === "published" ? "已上架" : "未过审"}
+                </span>
+                {work.status !== "published" ? <DeleteRejectedWorkForm workId={work.id} /> : null}
               </span>
-              <span className={work.status === "published" ? "pill ok" : "pill bad"}>
-                {work.status === "published" ? "已上架" : "未过审"}
-              </span>
-            </a>
+            </div>
           ))}
         </div>
       )}

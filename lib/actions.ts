@@ -6,7 +6,7 @@ import { isCategory } from "@/lib/categories";
 import { normalizeInviteCode } from "@/lib/codes";
 import { countWords, safeNext } from "@/lib/format";
 import { reviewWork } from "@/lib/ai";
-import { createReviewCover } from "@/lib/cover";
+import { createReviewCover, removeCoverFiles } from "@/lib/cover";
 import { extractWorkMeta } from "@/lib/extract-meta";
 import { clearSession, getCurrentUser, setSession } from "@/lib/auth";
 import {
@@ -17,6 +17,7 @@ import {
   createDiscussion,
   createRequirement,
   deleteDiscussion,
+  deleteRejectedWork,
   deliverRequirement,
   findUserByEmail,
   findUserByLogin,
@@ -390,4 +391,17 @@ export async function deleteDiscussionAction(formData: FormData) {
     revalidatePath("/", "layout");
   }
   redirect(next);
+}
+
+/** 作者删除未过审稿件。 */
+export async function deleteRejectedWorkAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "请先登录" };
+  const workId = Number(text(formData, "workId"));
+  if (!Number.isInteger(workId) || workId <= 0) return { error: "找不到这篇" };
+  const result = deleteRejectedWork(workId, user.id);
+  if (!result.ok) return { error: result.error };
+  removeCoverFiles(workId);
+  revalidateAll();
+  redirect("/mine");
 }
