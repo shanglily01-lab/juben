@@ -100,7 +100,7 @@ type CheckinRow = {
 };
 
 const globalDb = globalThis as unknown as { __moben?: DatabaseSync; __mobenSchema?: number };
-const SCHEMA = 15;
+const SCHEMA = 16;
 const ACTIVATION_MS = 24 * 60 * 60 * 1000;
 const RESEND_MS = 60 * 1000;
 
@@ -316,7 +316,7 @@ function migrate(db: DatabaseSync) {
     db.prepare("UPDATE users SET username = '大黄书' WHERE email = 'editor@moben.local'").run();
   }
 
-  // 清掉编辑室历史样本；用户稿先待审入库，不自动放行。
+  // 清掉编辑室历史样本。
   db.exec(`
     DELETE FROM discussions WHERE work_id IN (
       SELECT id FROM works WHERE author_id IN (SELECT id FROM users WHERE email = 'editor@moben.local')
@@ -331,6 +331,15 @@ function migrate(db: DatabaseSync) {
       SELECT id FROM works WHERE author_id IN (SELECT id FROM users WHERE email = 'editor@moben.local')
     );
     DELETE FROM works WHERE author_id IN (SELECT id FROM users WHERE email = 'editor@moben.local');
+  `);
+
+  // SCHEMA 16：把「待审」稿直接上架，方便批量上传。
+  db.exec(`
+    UPDATE works
+    SET status = 'published',
+        score = CASE WHEN score < 6 THEN 6.5 ELSE score END,
+        grade = CASE WHEN grade IN ('待审', '未过', '') OR grade IS NULL THEN '乙' ELSE grade END
+    WHERE status = 'pending';
   `);
 }
 
