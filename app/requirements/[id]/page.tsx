@@ -6,7 +6,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { categoryName } from "@/lib/categories";
 import { getRequirement } from "@/lib/db";
 import { formatDate, kindLabel } from "@/lib/format";
-import { yuanLabel } from "@/lib/pricing";
+import { coinLabel } from "@/lib/pricing";
 import { isPaidRequirementStatus, requirementStatusLabel } from "@/lib/requirements";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -56,18 +56,19 @@ export default async function RequirementDetailPage({
       <div className="panel">
         <span className="hint">赏金</span>
         <p className="balance">
-          {yuanLabel(item.bounty_yuan)}
+          {coinLabel(item.bounty_yuan)}
           <small>{paid ? "已支付" : "待支付"}</small>
         </p>
       </div>
 
       {showPay ? (
         <>
-          {query.pay === "1" ? <p className="note">征稿已创建，请支付赏金后开始制作。</p> : null}
+          {query.pay === "1" ? <p className="note">征稿已创建，请用金币支付赏金后开始制作。</p> : null}
           <RequirementPay
             requirementId={item.id}
             title={item.title}
-            yuan={item.bounty_yuan}
+            coins={item.bounty_yuan}
+            balance={user?.coins ?? 0}
             loggedIn={Boolean(user)}
             autoOpen={query.pay === "1"}
           />

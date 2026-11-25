@@ -40,9 +40,9 @@ describe("金币规则", () => {
     expect(checkinReward(0)).toBe(2);
   });
 
-  it("只认识三档演示充值", () => {
-    expect(findPack("coin30")).toMatchObject({ coins: 30, yuan: 6 });
-    expect(findPack("coin98")?.coins).toBe(98);
+  it("充值档按 1 元 = 10 金", () => {
+    expect(findPack("coin60")).toMatchObject({ coins: 60, yuan: 6 });
+    expect(findPack("coin180")?.coins).toBe(180);
     expect(findPack("nope")).toBeUndefined();
     expect(SIGNUP_COINS).toBe(20);
   });
@@ -88,10 +88,10 @@ describe("格式", () => {
     expect(priceLabel(0)).toBe("免费");
     expect(priceLabel(12)).toBe("12 金币");
     expect(shelfPriceLabel(0, 9)).toBe("免费");
-    expect(shelfPriceLabel(10, 9.1, 1)).toBe("¥80");
-    expect(shelfPriceLabel(10, 8, 3)).toBe("¥80");
-    expect(shelfPriceLabel(10, 6.5, 1)).toBe("¥20");
-    expect(shelfPriceLabel(10, 9, 20)).toBe("¥300");
+    expect(shelfPriceLabel(10, 9.1, 1)).toBe("800 金");
+    expect(shelfPriceLabel(10, 8, 3)).toBe("800 金");
+    expect(shelfPriceLabel(10, 6.5, 1)).toBe("200 金");
+    expect(shelfPriceLabel(10, 9, 20)).toBe("3000 金");
     expect(formatReads(12)).toBe("12 阅读");
     expect(formatReads(12000)).toBe("1.2万阅读");
   });

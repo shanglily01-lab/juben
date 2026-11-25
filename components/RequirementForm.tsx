@@ -4,7 +4,7 @@ import { useActionState } from "react";
 
 import { createRequirementAction } from "@/lib/actions";
 import { CATEGORIES } from "@/lib/categories";
-import { MIN_REQUIREMENT_YUAN } from "@/lib/pricing";
+import { MIN_REQUIREMENT_COINS } from "@/lib/pricing";
 import type { ActionState } from "@/lib/types";
 
 const initial: ActionState = { error: "" };
@@ -46,18 +46,18 @@ export function RequirementForm() {
         <input name="reference" maxLength={500} placeholder="例如：某抖音号 / 某短剧名" />
       </label>
       <label>
-        赏金（元）
+        赏金（金币）
         <input
           name="bounty"
           type="number"
           required
-          min={MIN_REQUIREMENT_YUAN}
-          step={1}
-          defaultValue={MIN_REQUIREMENT_YUAN}
+          min={MIN_REQUIREMENT_COINS}
+          step={10}
+          defaultValue={MIN_REQUIREMENT_COINS}
         />
       </label>
       <p className="hint">
-        最低 ¥{MIN_REQUIREMENT_YUAN}。付款后由大黄书制作，交稿仅你本人可读（独占）。
+        最低 {MIN_REQUIREMENT_COINS} 金（约 ¥{MIN_REQUIREMENT_COINS / 10}）。余额不足请先充值。交稿仅你本人可读。
       </p>
       <button className="btn" type="submit" disabled={pending}>
         {pending ? "提交中…" : "提交并去付款"}

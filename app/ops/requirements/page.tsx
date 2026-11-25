@@ -4,7 +4,7 @@ import { OpsRequirementActions } from "@/components/OpsRequirementActions";
 import { categoryName } from "@/lib/categories";
 import { listOpsRequirements } from "@/lib/db";
 import { kindLabel } from "@/lib/format";
-import { yuanLabel } from "@/lib/pricing";
+import { coinLabel } from "@/lib/pricing";
 import { requirementStatusLabel } from "@/lib/requirements";
 
 export const metadata: Metadata = { title: "征稿交付" };
@@ -68,7 +68,7 @@ export default async function OpsRequirementsPage({
                 #{item.id} {item.title}
               </strong>
               <p className="hint">
-                {item.username} · 赏金 {yuanLabel(item.bounty_yuan)}
+                {item.username} · 赏金 {coinLabel(item.bounty_yuan)}
                 {item.delivered_work_id ? ` · 作品 #${item.delivered_work_id}` : ""}
               </p>
               <p>{item.brief.slice(0, 200)}{item.brief.length > 200 ? "…" : ""}</p>

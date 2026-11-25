@@ -6,15 +6,23 @@ import {
   checkinAction,
   loginAction,
   logoutAction,
-  rechargeAction,
   registerAction,
   resendActivationAction,
   unlockAction,
   uploadAction,
 } from "@/lib/actions";
-import { findUserByEmail, getDb, getWorkDetail, insertWork, listLedger, listWorks } from "@/lib/db";
+import {
+  findUserByEmail,
+  getDb,
+  getWorkDetail,
+  insertWork,
+  listLedger,
+  listWorks,
+  rechargeCoins,
+} from "@/lib/db";
 import { countWords } from "@/lib/format";
 import { latestOutboxLink } from "@/lib/mail";
+import { unlockCoinsFromScore } from "@/lib/pricing";
 import { readSeedWorks } from "@/lib/seed";
 import type { ActionState } from "@/lib/types";
 
@@ -202,26 +210,38 @@ describe("签到、充值、解锁、投稿", () => {
 
   it("金币不够时解锁失败，充值后能解开，同一篇不重复扣", async () => {
     const user = await register("己");
-    await activate(user.token);
+    const current = await activate(user.token);
     const paid = listWorks({})
       .filter((work) => work.price > 0)
-      .sort((left, right) => right.price - left.price);
+      .map((work) => {
+        const detail = getWorkDetail(work.id)!;
+        return {
+          id: work.id,
+          coins: unlockCoinsFromScore(detail.score, Math.max(1, detail.episode_count || 1)),
+        };
+      })
+      .sort((left, right) => left.coins - right.coins);
     const free = listWorks({}).find((work) => work.price === 0);
     expect(paid.length).toBeGreaterThanOrEqual(2);
     expect(free).toBeTruthy();
     if (!free || paid.length < 2) return;
     const [first, second] = paid;
     expect((await unlockAction(empty, form({ workId: String(free.id) }))).error).toBe("这篇是免费的");
-    expect(await redirectUrl(() => unlockAction(empty, form({ workId: String(first.id) })))).toBe(`/works/${first.id}`);
+    expect((await unlockAction(empty, form({ workId: String(first.id) }))).error).toBe("金币不够，先去充值");
+
+    rechargeCoins(current.id, first.coins, "测试充值");
+    expect(await redirectUrl(() => unlockAction(empty, form({ workId: String(first.id) })))).toBe(
+      `/works/${first.id}`,
+    );
     const afterFirst = (await getCurrentUser())?.coins ?? 0;
-    expect(afterFirst).toBe(20 - first.price);
+    expect(afterFirst).toBe(20);
     expect((await unlockAction(empty, form({ workId: String(second.id) }))).error).toBe("金币不够，先去充值");
-    expect((await getCurrentUser())?.coins).toBe(afterFirst);
-    expect(await redirectUrl(() => unlockAction(empty, form({ workId: String(first.id) })))).toBe(`/works/${first.id}`);
+    expect(await redirectUrl(() => unlockAction(empty, form({ workId: String(first.id) })))).toBe(
+      `/works/${first.id}`,
+    );
     expect((await getCurrentUser())?.coins).toBe(afterFirst);
 
-    expect(await redirectUrl(() => rechargeAction(empty, form({ pack: "coin30" })))).toBe("/wallet?ok=1");
-    expect((await getCurrentUser())?.coins).toBe(afterFirst + 30);
+    rechargeCoins(current.id, second.coins, "测试充值");
     expect(await redirectUrl(() => unlockAction(empty, form({ workId: String(second.id) })))).toBe(
       `/works/${second.id}`,
     );

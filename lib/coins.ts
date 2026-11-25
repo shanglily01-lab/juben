@@ -10,10 +10,12 @@ export function checkinReward(streak: number) {
   return CHECKIN_REWARDS[index];
 }
 
+/** 真充值档：1 元 = 10 金。 */
 export const PACKS = [
-  { id: "coin30", coins: 30, yuan: 6, label: "试读" },
-  { id: "coin98", coins: 98, yuan: 18, label: "常用" },
-  { id: "coin328", coins: 328, yuan: 50, label: "整季" },
+  { id: "coin60", coins: 60, yuan: 6, label: "试读" },
+  { id: "coin180", coins: 180, yuan: 18, label: "常用" },
+  { id: "coin500", coins: 500, yuan: 50, label: "整季" },
+  { id: "coin1000", coins: 1000, yuan: 100, label: "征稿起步" },
 ] as const;
 
 export type PackId = (typeof PACKS)[number]["id"];

@@ -1,17 +1,17 @@
 import { describe, expect, it } from "vitest";
 
-import { MIN_REQUIREMENT_YUAN } from "@/lib/pricing";
-import { parseBountyYuan, requirementStatusLabel } from "@/lib/requirements";
+import { MIN_REQUIREMENT_COINS } from "@/lib/pricing";
+import { parseBountyCoins, requirementStatusLabel } from "@/lib/requirements";
 
 describe("requirements", () => {
-  it("rejects bounty below minimum", () => {
-    expect(parseBountyYuan(MIN_REQUIREMENT_YUAN - 1)).toBeNull();
-    expect(parseBountyYuan("199")).toBeNull();
+  it("rejects bounty below minimum coins", () => {
+    expect(parseBountyCoins(MIN_REQUIREMENT_COINS - 1)).toBeNull();
+    expect(parseBountyCoins("999")).toBeNull();
   });
 
-  it("accepts integer bounty at or above minimum", () => {
-    expect(parseBountyYuan(MIN_REQUIREMENT_YUAN)).toBe(MIN_REQUIREMENT_YUAN);
-    expect(parseBountyYuan("500")).toBe(500);
+  it("accepts integer bounty at or above minimum coins", () => {
+    expect(parseBountyCoins(MIN_REQUIREMENT_COINS)).toBe(MIN_REQUIREMENT_COINS);
+    expect(parseBountyCoins("2000")).toBe(2000);
   });
 
   it("labels statuses", () => {

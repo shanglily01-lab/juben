@@ -3,7 +3,8 @@ import { createHash, randomBytes } from "node:crypto";
 import { BUYOUT_YUAN, unlockYuanFromScore, type PayChannelId } from "@/lib/pricing";
 import { requestOrigin } from "@/lib/origin";
 
-export type PayKind = "buyout" | "unlock" | "requirement";
+/** 法币订单目前只用于充值入金币；旧 unlock/buyout/requirement 保留兼容。 */
+export type PayKind = "topup" | "buyout" | "unlock" | "requirement";
 export type { PayChannelId } from "@/lib/pricing";
 export { PAY_CHANNELS, isPayChannel } from "@/lib/pricing";
 
@@ -48,6 +49,7 @@ export function payOrderNo() {
 export function amountFenFor(kind: PayKind, score?: number, bountyYuan?: number, episodeCount = 1) {
   if (kind === "buyout") return BUYOUT_YUAN * 100;
   if (kind === "requirement") return Math.max(0, Math.floor(bountyYuan ?? 0)) * 100;
+  if (kind === "topup") return Math.max(0, Math.floor(bountyYuan ?? 0)) * 100;
   return unlockYuanFromScore(score ?? 6, episodeCount) * 100;
 }
 

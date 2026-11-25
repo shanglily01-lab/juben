@@ -9,11 +9,16 @@ import { formatDate } from "@/lib/format";
 
 export const metadata: Metadata = { title: "金币" };
 
-export default async function WalletPage({ searchParams }: { searchParams: Promise<{ ok?: string }> }) {
+export default async function WalletPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ ok?: string; need?: string }>;
+}) {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/wallet");
   const params = await searchParams;
   const entries = listLedger(user.id);
+  const need = Math.max(0, Math.floor(Number(params.need) || 0));
 
   return (
     <div className="wrap page">
@@ -23,8 +28,11 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
         {user.coins}
         <small>可用</small>
       </p>
-      <p className="intro">同一份余额可以解锁短剧。签到、邀请和演示充值都记在下面的流水里。</p>
-      {params.ok === "1" ? <p className="note">演示充值已到账。</p> : null}
+      <p className="intro">1 元 = 10 金。微信 / 支付宝只用于充值；解锁、买断、征稿都扣金币。</p>
+      {params.ok === "1" ? <p className="note">充值已到账。</p> : null}
+      {need > 0 && user.coins < need ? (
+        <p className="note">本次大约还需要 {need - user.coins} 金，选一档充值即可。</p>
+      ) : null}
       <ul className="rules">
         <li>注册并激活邮箱后赠送 {SIGNUP_COINS} 金币。</li>
         <li>
@@ -34,7 +42,7 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
         <li>
           邀请一位新用户，你得 {INVITER_COINS}，对方额外得 {INVITEE_COINS}。<a href="/invite">去邀请</a>
         </li>
-        <li>演示充值确认后入账，不会产生真实扣款。</li>
+        <li>充值按档位真实付款，到账后即可消费。</li>
       </ul>
       <div className="section-title">
         <h2>充值</h2>

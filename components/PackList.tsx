@@ -1,36 +1,79 @@
 "use client";
 
-import { useActionState } from "react";
+import { useState, useTransition } from "react";
 
-import { rechargeAction } from "@/lib/actions";
-import { SubmitButton } from "@/components/SubmitButton";
 import { PACKS } from "@/lib/coins";
-import type { ActionState } from "@/lib/types";
-
-const initial: ActionState = { error: "" };
+import { PAY_CHANNELS, type PayChannelId, yuanLabel } from "@/lib/pricing";
 
 export function PackList() {
-  return (
-    <div className="packs">
-      {PACKS.map((pack) => (
-        <PackForm key={pack.id} id={pack.id} label={pack.label} coins={pack.coins} yuan={pack.yuan} />
-      ))}
-    </div>
-  );
-}
+  const [channel, setChannel] = useState<PayChannelId>("005");
+  const [error, setError] = useState("");
+  const [pendingId, setPendingId] = useState("");
+  const [pending, start] = useTransition();
 
-function PackForm({ id, label, coins, yuan }: { id: string; label: string; coins: number; yuan: number }) {
-  const [state, formAction] = useActionState(rechargeAction, initial);
   return (
-    <form className="pack" action={formAction}>
-      <input type="hidden" name="pack" value={id} />
-      <p>
-        {label}
-        <br />
-        <strong>{coins} 金币</strong>
-      </p>
-      {state.error ? <p className="alert">{state.error}</p> : null}
-      <SubmitButton idle={`演示价 ¥${yuan}`} pending="正在入账…" />
-    </form>
+    <div className="packs-wrap">
+      <div className="pay-channels" role="group" aria-label="支付方式">
+        {PAY_CHANNELS.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className={`pay-channel${channel === item.id ? " active" : ""}`}
+            disabled={pending}
+            onClick={() => setChannel(item.id)}
+          >
+            {item.label}
+            <small>{item.id}</small>
+          </button>
+        ))}
+      </div>
+      {error ? (
+        <p className="alert" role="alert">
+          {error}
+        </p>
+      ) : null}
+      <div className="packs">
+        {PACKS.map((pack) => (
+          <div className="pack" key={pack.id}>
+            <p>
+              {pack.label}
+              <br />
+              <strong>{pack.coins} 金币</strong>
+            </p>
+            <p className="hint">{yuanLabel(pack.yuan)} · 1 元 = 10 金</p>
+            <button
+              className="btn solid"
+              type="button"
+              disabled={pending}
+              onClick={() => {
+                setError("");
+                setPendingId(pack.id);
+                start(async () => {
+                  try {
+                    const response = await fetch("/api/pay/create", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ kind: "topup", packId: pack.id, channel }),
+                    });
+                    const data = (await response.json()) as { ok?: boolean; msg?: string; payUrl?: string };
+                    if (!data.ok || !data.payUrl) {
+                      setError(data.msg || "下单失败");
+                      setPendingId("");
+                      return;
+                    }
+                    location.href = data.payUrl;
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : "网络异常");
+                    setPendingId("");
+                  }
+                });
+              }}
+            >
+              {pending && pendingId === pack.id ? "跳转支付…" : `充值 ${yuanLabel(pack.yuan)}`}
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

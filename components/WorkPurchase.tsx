@@ -1,36 +1,44 @@
 "use client";
 
-import { useEffect, useId, useState, useTransition } from "react";
+import { useActionState, useEffect, useId, useState } from "react";
 
 import { AuthForm } from "@/components/AuthForm";
-import { BUYOUT_YUAN, PAY_CHANNELS, type PayChannelId, yuanLabel } from "@/lib/pricing";
+import { buyoutAction, unlockAction } from "@/lib/actions";
+import { BUYOUT_COINS, coinLabel } from "@/lib/pricing";
+import type { ActionState } from "@/lib/types";
+
+const initial: ActionState = { error: "" };
 
 type PayKind = "unlock" | "buyout";
 
 export function WorkPurchase({
   workId,
-  yuan,
+  coins,
+  balance,
   loggedIn,
   unlocked,
   buyout,
   takenByOther = false,
 }: {
   workId: number;
-  yuan: number;
+  coins: number;
+  balance: number;
   loggedIn: boolean;
   unlocked: boolean;
   buyout: boolean;
-  /** 已被别人独占买断 */
   takenByOther?: boolean;
 }) {
   const titleId = useId();
   const [open, setOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [payKind, setPayKind] = useState<PayKind>("unlock");
-  const [channel, setChannel] = useState<PayChannelId>("005");
-  const [error, setError] = useState("");
-  const [pending, start] = useTransition();
+  const [unlockState, unlockFormAction, unlockPending] = useActionState(unlockAction, initial);
+  const [buyoutState, buyoutFormAction, buyoutPending] = useActionState(buyoutAction, initial);
   const next = `/works/${workId}`;
+  const cost = payKind === "buyout" ? BUYOUT_COINS : coins;
+  const enough = balance >= cost;
+  const error = payKind === "buyout" ? buyoutState.error : unlockState.error;
+  const pending = unlockPending || buyoutPending;
 
   useEffect(() => {
     if (!open) return;
@@ -43,14 +51,13 @@ export function WorkPurchase({
 
   function openPay(kind: PayKind) {
     setPayKind(kind);
-    setError("");
     setOpen(true);
   }
 
   if (takenByOther) {
     return (
       <div className="work-buy">
-        <strong className="work-price">{yuanLabel(yuan)}</strong>
+        <strong className="work-price">{coinLabel(coins)}</strong>
         <button className="btn solid buyout-done" type="button" disabled>
           已被买断
         </button>
@@ -61,7 +68,7 @@ export function WorkPurchase({
   if (buyout) {
     return (
       <div className="work-buy">
-        <strong className="work-price">{yuanLabel(yuan)}</strong>
+        <strong className="work-price">{coinLabel(coins)}</strong>
         <button className="btn solid buyout-done" type="button" disabled>
           已买断
         </button>
@@ -75,7 +82,7 @@ export function WorkPurchase({
   return (
     <>
       <div className="work-buy">
-        <strong className="work-price">{yuanLabel(yuan)}</strong>
+        <strong className="work-price">{coinLabel(coins)}</strong>
         {unlocked ? (
           <>
             <span className="work-owned">已购买</span>
@@ -83,7 +90,7 @@ export function WorkPurchase({
               免费下载
             </a>
             <button type="button" className="btn solid" onClick={() => openPay("buyout")}>
-              买断 {yuanLabel(BUYOUT_YUAN)}
+              买断 {coinLabel(BUYOUT_COINS)}
             </button>
           </>
         ) : (
@@ -92,7 +99,7 @@ export function WorkPurchase({
               购买
             </button>
             <button type="button" className="btn ghost" onClick={() => openPay("buyout")}>
-              买断 {yuanLabel(BUYOUT_YUAN)}
+              买断 {coinLabel(BUYOUT_COINS)}
             </button>
           </>
         )}
@@ -114,7 +121,7 @@ export function WorkPurchase({
               <>
                 <h2 id={titleId}>登录后购买</h2>
                 <p className="hint">
-                  本篇购买 {yuanLabel(yuan)}，买断 {yuanLabel(BUYOUT_YUAN)}。先登录或注册。
+                  本篇 {coinLabel(coins)}，买断 {coinLabel(BUYOUT_COINS)}。先登录或注册。
                 </p>
                 <div className="auth-modal-tabs" role="tablist">
                   <button
@@ -143,57 +150,27 @@ export function WorkPurchase({
                 <h2 id={titleId}>{payKind === "buyout" ? "买断本篇" : "购买本篇"}</h2>
                 <p className="hint">
                   {payKind === "buyout"
-                    ? `买断价 ${yuanLabel(BUYOUT_YUAN)}。买断后仅你可阅读本篇，其他人将无法再看，按钮置灰。`
-                    : `按质量计价 ${yuanLabel(yuan)}，解锁全文后可阅读并免费下载。`}
+                    ? `买断价 ${coinLabel(BUYOUT_COINS)}。买断后仅你可阅读，其他人无法再看。`
+                    : `需 ${coinLabel(coins)}，解锁后可阅读并免费下载。`}
+                  {` 当前余额 ${coinLabel(balance)}。`}
                 </p>
-                <div className="pay-channels" role="group" aria-label="支付方式">
-                  {PAY_CHANNELS.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      className={`pay-channel${channel === item.id ? " active" : ""}`}
-                      disabled={pending}
-                      onClick={() => setChannel(item.id)}
-                    >
-                      {item.label}
-                      <small>{item.id}</small>
-                    </button>
-                  ))}
-                </div>
                 {error ? (
                   <p className="alert" role="alert">
                     {error}
                   </p>
                 ) : null}
-                <button
-                  type="button"
-                  className="btn solid"
-                  disabled={pending}
-                  onClick={() => {
-                    setError("");
-                    start(async () => {
-                      try {
-                        const response = await fetch("/api/pay/create", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ kind: payKind, workId, channel }),
-                        });
-                        const data = (await response.json()) as { ok?: boolean; msg?: string; payUrl?: string };
-                        if (!data.ok || !data.payUrl) {
-                          setError(data.msg || "下单失败");
-                          return;
-                        }
-                        location.href = data.payUrl;
-                      } catch (err) {
-                        setError(err instanceof Error ? err.message : "网络异常");
-                      }
-                    });
-                  }}
-                >
-                  {pending
-                    ? "正在跳转…"
-                    : `支付 ${yuanLabel(payKind === "buyout" ? BUYOUT_YUAN : yuan)}`}
-                </button>
+                {!enough ? (
+                  <a className="btn solid" href={`/wallet?need=${cost}`}>
+                    金币不足，去充值
+                  </a>
+                ) : (
+                  <form action={payKind === "buyout" ? buyoutFormAction : unlockFormAction}>
+                    <input type="hidden" name="workId" value={workId} />
+                    <button className="btn solid" type="submit" disabled={pending}>
+                      {pending ? "处理中…" : `支付 ${coinLabel(cost)}`}
+                    </button>
+                  </form>
+                )}
               </>
             )}
           </div>

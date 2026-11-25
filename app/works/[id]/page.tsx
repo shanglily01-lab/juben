@@ -21,7 +21,7 @@ import {
 } from "@/lib/db";
 import { clampEpisode, splitEpisodes } from "@/lib/episodes";
 import { formatDate, formatReads, kindLabel, parseReview, previewMarkdown, priceLabel } from "@/lib/format";
-import { unlockYuanFromScore, yuanLabel } from "@/lib/pricing";
+import { coinLabel, unlockCoinsFromScore } from "@/lib/pricing";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
@@ -58,8 +58,8 @@ export default async function WorkPage({
   const canDownload = canRead && (work.price <= 0 || unlocked || iOwnBuyout || isAuthor);
   const review = parseReview(work.review_json);
   const episodeCount = Math.max(1, Number(work.episode_count) || splitEpisodes(work.content).length);
-  const cashYuan = work.price > 0 ? unlockYuanFromScore(work.score, episodeCount) : 0;
-  const priceText = work.price <= 0 ? priceLabel(0) : yuanLabel(cashYuan);
+  const unlockCoins = work.price > 0 ? unlockCoinsFromScore(work.score, episodeCount) : 0;
+  const priceText = work.price <= 0 ? priceLabel(0) : coinLabel(unlockCoins);
   const showBuy = work.price > 0 && !isAuthor;
 
   const episodes = splitEpisodes(work.content);
@@ -109,7 +109,8 @@ export default async function WorkPage({
             {showBuy ? (
               <WorkPurchase
                 workId={work.id}
-                yuan={cashYuan}
+                coins={unlockCoins}
+                balance={user?.coins ?? 0}
                 loggedIn={Boolean(user)}
                 unlocked={unlocked && !buyoutTaken}
                 buyout={iOwnBuyout}

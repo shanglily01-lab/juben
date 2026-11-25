@@ -7,7 +7,7 @@ import { categoryName } from "@/lib/categories";
 import { INVITER_COINS } from "@/lib/coins";
 import { getCheckinState, listByAuthor, listRequirementsByUser, listUnlocked } from "@/lib/db";
 import { priceLabel } from "@/lib/format";
-import { yuanLabel } from "@/lib/pricing";
+import { coinLabel } from "@/lib/pricing";
 import { requirementStatusLabel } from "@/lib/requirements";
 
 export const metadata: Metadata = { title: "我的" };
@@ -76,7 +76,7 @@ export default async function MinePage({ searchParams }: { searchParams: Promise
                 <strong>{item.title}</strong>
                 <br />
                 <span className="hint">
-                  {yuanLabel(item.bounty_yuan)}
+                  {coinLabel(item.bounty_yuan)}
                   {item.delivered_work_id ? " · 已交付" : ""}
                 </span>
               </span>

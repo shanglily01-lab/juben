@@ -1,32 +1,41 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  BUYOUT_COINS,
   BUYOUT_YUAN,
+  COIN_PER_YUAN,
+  MIN_REQUIREMENT_COINS,
   PAY_CHANNELS,
   UNLOCK_YUAN_STEPS,
+  coinLabel,
   episodeBand,
   isPayChannel,
   qualityBand,
   tierForScore,
+  unlockCoinsFromScore,
   unlockYuanFromScore,
   yuanLabel,
 } from "@/lib/pricing";
 
 describe("pricing", () => {
+  it("uses 1 yuan = 10 coins", () => {
+    expect(COIN_PER_YUAN).toBe(10);
+    expect(BUYOUT_COINS).toBe(BUYOUT_YUAN * 10);
+    expect(MIN_REQUIREMENT_COINS).toBe(1000);
+  });
+
   it("exposes unlock steps including 20 / 30 / 50 / 80", () => {
     expect([...UNLOCK_YUAN_STEPS]).toEqual([20, 30, 50, 80, 100, 200, 300]);
   });
 
-  it("maps episode + quality to yuan", () => {
-    // 1 集 × 乙 → 20；1 集 × 甲上 → 80
+  it("maps episode + quality to yuan and coins", () => {
     expect(unlockYuanFromScore(6, 1)).toBe(20);
+    expect(unlockCoinsFromScore(6, 1)).toBe(200);
     expect(unlockYuanFromScore(9.2, 1)).toBe(80);
-    // 2–5 集 × 甲 → 80；6–15 × 乙上 → 80；16+ × 甲上 → 300
+    expect(unlockCoinsFromScore(9.2, 1)).toBe(800);
     expect(unlockYuanFromScore(8, 3)).toBe(80);
-    expect(unlockYuanFromScore(7.2, 10)).toBe(80);
     expect(unlockYuanFromScore(9, 20)).toBe(300);
-    // 兼容旧调用：缺集数按 1 集
-    expect(unlockYuanFromScore(8)).toBe(50);
+    expect(unlockCoinsFromScore(9, 20)).toBe(3000);
   });
 
   it("bands episode and quality", () => {
@@ -40,9 +49,9 @@ describe("pricing", () => {
     expect(qualityBand(9)).toBe(3);
   });
 
-  it("exposes per-work buyout and labels", () => {
-    expect(BUYOUT_YUAN).toBe(500);
+  it("labels coins and yuan", () => {
     expect(yuanLabel(80)).toBe("¥80");
+    expect(coinLabel(800)).toBe("800 金");
     expect(tierForScore(8.5).minScore).toBe(8);
   });
 

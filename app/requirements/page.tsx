@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { categoryName } from "@/lib/categories";
 import { listPublicRequirements } from "@/lib/db";
 import { kindLabel } from "@/lib/format";
-import { yuanLabel } from "@/lib/pricing";
+import { coinLabel, MIN_REQUIREMENT_COINS } from "@/lib/pricing";
 import { requirementStatusLabel } from "@/lib/requirements";
 
 export const metadata: Metadata = { title: "征稿" };
@@ -25,7 +25,7 @@ export default async function RequirementsPage() {
           发布征稿
         </a>
       </div>
-      <p className="intro">写下你要的剧，自填赏金（≥¥100）。付款后我们制作，交稿仅你可读。</p>
+      <p className="intro">写下你要的剧，自填赏金（≥{MIN_REQUIREMENT_COINS} 金）。付款后我们制作，交稿仅你可读。</p>
 
       {items.length === 0 ? (
         <p className="empty">
@@ -46,7 +46,7 @@ export default async function RequirementsPage() {
               <p>{item.brief.slice(0, 120)}{item.brief.length > 120 ? "…" : ""}</p>
               <div className="req-card-foot">
                 <span className="hint">{item.username}</span>
-                <span className="req-bounty-inline">已付赏金 {yuanLabel(item.bounty_yuan)}</span>
+                <span className="req-bounty-inline">已付赏金 {coinLabel(item.bounty_yuan)}</span>
               </div>
             </a>
           ))}

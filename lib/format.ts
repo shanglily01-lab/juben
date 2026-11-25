@@ -1,4 +1,4 @@
-import { unlockYuanFromScore, yuanLabel } from "@/lib/pricing";
+import { coinLabel, unlockCoinsFromScore } from "@/lib/pricing";
 import type { Review } from "@/lib/types";
 
 export function nowIso() {
@@ -47,10 +47,10 @@ export function priceLabel(price: number) {
   return price <= 0 ? "免费" : `${price} 金币`;
 }
 
-/** Card badge: free stays 免费; paid works show RMB from score + episode count. */
+/** Card badge: free stays 免费; paid works show coins from score + episode count. */
 export function shelfPriceLabel(price: number, score: number, episodeCount = 1) {
   if (price <= 0) return "免费";
-  return yuanLabel(unlockYuanFromScore(score, episodeCount));
+  return coinLabel(unlockCoinsFromScore(score, episodeCount));
 }
 
 export function formatReads(count: number) {

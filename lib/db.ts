@@ -7,7 +7,7 @@ import { isCategory } from "@/lib/categories";
 import { makeInviteCode } from "@/lib/codes";
 import { INVITEE_COINS, INVITER_COINS, SIGNUP_COINS, checkinReward } from "@/lib/coins";
 import { splitEpisodes } from "@/lib/episodes";
-import { BUYOUT_YUAN } from "@/lib/pricing";
+import { BUYOUT_COINS, BUYOUT_YUAN } from "@/lib/pricing";
 import { nowIso, previousDay, shanghaiToday } from "@/lib/format";
 import { dataDir } from "@/lib/paths";
 import { seedIfEmpty } from "@/lib/seed";
@@ -637,14 +637,15 @@ export function insertWork(input: {
   });
 }
 
-export function unlockWork(userId: number, workId: number, price: number, title: string) {
+export function unlockWork(userId: number, workId: number, coins: number, title: string) {
   const now = nowIso();
+  const cost = Math.max(0, Math.floor(coins));
   return txn((db) => {
     const existing = db.prepare("SELECT 1 AS ok FROM unlocks WHERE user_id = ? AND work_id = ?").get(userId, workId);
     if (existing) return { ok: false as const, error: "这篇已经解锁过了" };
     const changed = db
       .prepare("UPDATE users SET coins = coins - ? WHERE id = ? AND coins >= ?")
-      .run(price, userId, price);
+      .run(cost, userId, cost);
     if (changed.changes !== 1) return { ok: false as const, error: "金币不够，先去充值" };
     db.prepare("INSERT INTO unlocks (user_id, work_id, created_at) VALUES (?, ?, ?)").run(userId, workId, now);
     db.prepare(
@@ -652,11 +653,85 @@ export function unlockWork(userId: number, workId: number, price: number, title:
     ).run(workId);
     db.prepare("INSERT INTO ledger (user_id, delta, reason, created_at) VALUES (?, ?, ?, ?)").run(
       userId,
-      -price,
+      -cost,
       `解锁《${title}》`,
       now,
     );
     return { ok: true as const };
+  });
+}
+
+/** 金币买断：扣币后独占。 */
+export function buyoutWorkWithCoins(userId: number, workId: number, title: string, coins = BUYOUT_COINS) {
+  const now = nowIso();
+  const cost = Math.max(0, Math.floor(coins));
+  return txn((db) => {
+    const work = db.prepare("SELECT buyout_user_id FROM works WHERE id = ?").get(workId) as
+      | { buyout_user_id: number | null }
+      | undefined;
+    if (!work) return { ok: false as const, error: "作品不存在" };
+    if (work.buyout_user_id && work.buyout_user_id !== userId) {
+      return { ok: false as const, error: "这篇已被他人买断" };
+    }
+    if (work.buyout_user_id === userId) return { ok: true as const, already: true };
+
+    const charged = db
+      .prepare("UPDATE users SET coins = coins - ? WHERE id = ? AND coins >= ?")
+      .run(cost, userId, cost);
+    if (charged.changes !== 1) return { ok: false as const, error: "金币不够，先去充值" };
+
+    db.prepare("UPDATE works SET buyout_user_id = ?, buyout_at = ? WHERE id = ?").run(userId, now, workId);
+    const existing = db
+      .prepare("SELECT buyout FROM unlocks WHERE user_id = ? AND work_id = ?")
+      .get(userId, workId) as { buyout: number } | undefined;
+    if (existing) {
+      db.prepare("UPDATE unlocks SET buyout = 1 WHERE user_id = ? AND work_id = ?").run(userId, workId);
+    } else {
+      db.prepare("INSERT INTO unlocks (user_id, work_id, created_at, buyout) VALUES (?, ?, ?, 1)").run(
+        userId,
+        workId,
+        now,
+      );
+      db.prepare(
+        "UPDATE works SET purchase_count = COALESCE(purchase_count, 0) + 1 WHERE id = ?",
+      ).run(workId);
+    }
+    db.prepare("INSERT INTO ledger (user_id, delta, reason, created_at) VALUES (?, ?, ?, ?)").run(
+      userId,
+      -cost,
+      `买断《${title}》`,
+      now,
+    );
+    return { ok: true as const, already: false };
+  });
+}
+
+/** 金币支付征稿赏金。bounty 字段存的是金币数。 */
+export function payRequirementWithCoins(userId: number, requirementId: number) {
+  const now = nowIso();
+  return txn((db) => {
+    const row = db.prepare("SELECT * FROM requirements WHERE id = ?").get(requirementId) as
+      | RequirementRow
+      | undefined;
+    if (!row) return { ok: false as const, error: "征稿不存在" };
+    if (row.user_id !== userId) return { ok: false as const, error: "只能支付自己的征稿" };
+    if (row.status === "paid" || row.status === "making" || row.status === "delivered") {
+      return { ok: true as const, already: true };
+    }
+    if (row.status !== "awaiting_pay") return { ok: false as const, error: "当前状态不能付款" };
+    const cost = Math.max(0, Math.floor(row.bounty_yuan));
+    const charged = db
+      .prepare("UPDATE users SET coins = coins - ? WHERE id = ? AND coins >= ?")
+      .run(cost, userId, cost);
+    if (charged.changes !== 1) return { ok: false as const, error: "金币不够，先去充值" };
+    db.prepare("UPDATE requirements SET status = 'paid', paid_at = ? WHERE id = ?").run(now, requirementId);
+    db.prepare("INSERT INTO ledger (user_id, delta, reason, created_at) VALUES (?, ?, ?, ?)").run(
+      userId,
+      -cost,
+      `征稿赏金《${row.title}》`,
+      now,
+    );
+    return { ok: true as const, already: false };
   });
 }
 
@@ -866,7 +941,7 @@ export function markRequirementPaid(requirementId: number) {
     db.prepare("INSERT INTO ledger (user_id, delta, reason, created_at) VALUES (?, ?, ?, ?)").run(
       row.user_id,
       0,
-      `征稿赏金《${row.title}》¥${row.bounty_yuan}`,
+      `征稿赏金入账《${row.title}》`,
       now,
     );
     return { ok: true as const, already: false };

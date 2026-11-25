@@ -3,13 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { isCategory } from "@/lib/categories";
-import { findPack } from "@/lib/coins";
 import { normalizeInviteCode } from "@/lib/codes";
 import { countWords, safeNext } from "@/lib/format";
 import { reviewWork } from "@/lib/ai";
 import { createReviewCover } from "@/lib/cover";
 import { clearSession, getCurrentUser, setSession } from "@/lib/auth";
 import {
+  buyoutWorkWithCoins,
   checkIn,
   consumeActivationToken,
   countWorksByAuthor,
@@ -19,23 +19,31 @@ import {
   deliverRequirement,
   findUserByEmail,
   findUserByLogin,
+  getRequirement,
   getWorkDetail,
   hasUnlock,
+  hasWorkBuyout,
   insertWork,
   InvalidInviteError,
+  isWorkBuyoutTaken,
   discardUnusedActivationToken,
   issueActivationToken,
-  rechargeCoins,
+  payRequirementWithCoins,
   registerUser,
   setRequirementMaking,
   unlockWork,
   WorkLimitError,
 } from "@/lib/db";
+import { splitEpisodes } from "@/lib/episodes";
 import { sendActivationMail } from "@/lib/mail";
 import { requestOrigin } from "@/lib/origin";
 import { hashPassword, verifyPassword } from "@/lib/password";
-import { MIN_REQUIREMENT_YUAN } from "@/lib/pricing";
-import { parseBountyYuan } from "@/lib/requirements";
+import {
+  BUYOUT_COINS,
+  MIN_REQUIREMENT_COINS,
+  unlockCoinsFromScore,
+} from "@/lib/pricing";
+import { parseBountyCoins } from "@/lib/requirements";
 import type { ActionState, Kind } from "@/lib/types";
 
 function isAdminSecret(raw: string) {
@@ -202,24 +210,51 @@ export async function unlockAction(_prev: ActionState, formData: FormData): Prom
   if (!work || work.status !== "published") return { error: "这篇还不能解锁" };
   if (work.author_id === user.id) return { error: "这是你自己的稿件" };
   if (work.price <= 0) return { error: "这篇是免费的" };
-  if (hasUnlock(user.id, work.id)) {
+  if (isWorkBuyoutTaken(work.id) && !hasWorkBuyout(user.id, work.id)) {
+    return { error: "这篇已被买断" };
+  }
+  if (hasUnlock(user.id, work.id) || hasWorkBuyout(user.id, work.id)) {
     revalidateAll();
     redirect(`/works/${work.id}`);
   }
-  const result = unlockWork(user.id, work.id, work.price, work.title);
+  const episodes = Math.max(1, Number(work.episode_count) || splitEpisodes(work.content).length);
+  const coins = unlockCoinsFromScore(work.score, episodes);
+  const result = unlockWork(user.id, work.id, coins, work.title);
   if (!result.ok) return { error: result.error };
   revalidateAll();
   redirect(`/works/${work.id}`);
 }
 
-export async function rechargeAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+export async function buyoutAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const user = await getCurrentUser();
   if (!user) return { error: "请先登录" };
-  const pack = findPack(text(formData, "pack"));
-  if (!pack) return { error: "请选择充值档位" };
-  rechargeCoins(user.id, pack.coins, `演示充值 ${pack.coins} 金币`);
+  const workId = Number(text(formData, "workId"));
+  if (!Number.isInteger(workId) || workId <= 0) return { error: "找不到这篇" };
+  const work = getWorkDetail(workId);
+  if (!work || work.status !== "published") return { error: "这篇还不能买断" };
+  if (work.author_id === user.id) return { error: "这是你自己的稿件" };
+  if (work.price <= 0) return { error: "免费篇无需买断" };
+  const result = buyoutWorkWithCoins(user.id, work.id, work.title, BUYOUT_COINS);
+  if (!result.ok) return { error: result.error };
   revalidateAll();
-  redirect("/wallet?ok=1");
+  redirect(`/works/${work.id}`);
+}
+
+export async function payRequirementAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "请先登录" };
+  const requirementId = Number(text(formData, "requirementId"));
+  if (!Number.isInteger(requirementId) || requirementId <= 0) return { error: "缺少征稿" };
+  const requirement = getRequirement(requirementId);
+  if (!requirement) return { error: "征稿不存在" };
+  if (requirement.user_id !== user.id) return { error: "只能支付自己的征稿" };
+  const result = payRequirementWithCoins(user.id, requirementId);
+  if (!result.ok) return { error: result.error };
+  revalidatePath("/requirements");
+  revalidatePath(`/requirements/${requirementId}`);
+  revalidatePath("/mine");
+  revalidatePath("/wallet");
+  redirect(`/requirements/${requirementId}`);
 }
 
 export async function resendActivationAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -264,14 +299,14 @@ export async function createRequirementAction(_prev: ActionState, formData: Form
   const category = text(formData, "category");
   const brief = text(formData, "brief");
   const referenceText = text(formData, "reference");
-  const bountyYuan = parseBountyYuan(formData.get("bounty"));
+  const bountyCoins = parseBountyCoins(formData.get("bounty"));
 
   if (title.length < 2 || title.length > 80) return { error: "标题 2–80 字" };
   if (kindRaw !== "script") return { error: "目前只征短剧剧本" };
   if (!isCategory(category)) return { error: "请选择分类" };
   if (brief.length < 20 || brief.length > 4000) return { error: "内容要求 20–4000 字" };
   if (referenceText.length > 500) return { error: "对标说明最多 500 字" };
-  if (bountyYuan == null) return { error: `赏金至少 ¥${MIN_REQUIREMENT_YUAN}，且为整数` };
+  if (bountyCoins == null) return { error: `赏金至少 ${MIN_REQUIREMENT_COINS} 金，且为整数` };
 
   const id = createRequirement({
     userId: user.id,
@@ -280,7 +315,7 @@ export async function createRequirementAction(_prev: ActionState, formData: Form
     category,
     brief,
     referenceText,
-    bountyYuan,
+    bountyYuan: bountyCoins,
   });
   revalidatePath("/requirements");
   revalidatePath("/mine");

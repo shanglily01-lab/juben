@@ -1,4 +1,4 @@
-import { MIN_REQUIREMENT_YUAN } from "@/lib/pricing";
+import { MIN_REQUIREMENT_COINS } from "@/lib/pricing";
 
 export const REQUIREMENT_STATUSES = [
   { id: "awaiting_pay", label: "待付款" },
@@ -17,10 +17,16 @@ export function isPaidRequirementStatus(status: string) {
   return status === "paid" || status === "making" || status === "delivered";
 }
 
-export function parseBountyYuan(raw: FormDataEntryValue | string | number | null | undefined) {
+/** 赏金按金币计；库字段仍名 bounty_yuan，存的是金币数。 */
+export function parseBountyCoins(raw: FormDataEntryValue | string | number | null | undefined) {
   const n = Number(String(raw ?? "").trim());
   if (!Number.isFinite(n) || !Number.isInteger(n)) return null;
-  if (n < MIN_REQUIREMENT_YUAN) return null;
-  if (n > 100_000) return null;
+  if (n < MIN_REQUIREMENT_COINS) return null;
+  if (n > 1_000_000) return null;
   return n;
+}
+
+/** @deprecated 使用 parseBountyCoins */
+export function parseBountyYuan(raw: FormDataEntryValue | string | number | null | undefined) {
+  return parseBountyCoins(raw);
 }
