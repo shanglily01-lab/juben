@@ -1320,6 +1320,16 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
 .invite-stats { margin-top: 14px; }
 .rules { margin: 14px 0 0; padding-left: 1.1em; color: var(--ink-soft); line-height: 1.75; }
 .rules a { color: var(--gold); }
+.upload-rules {
+  margin: 0 0 18px;
+  max-width: 40rem;
+  padding: 14px 14px 14px 1.6em;
+  background: var(--card);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+}
+.upload-rules li { margin: 0.35em 0; }
+.hint.upload-warn { color: var(--cinnabar-deep); }
 .activate-link { display: block; margin: 12px 0; word-break: break-all; color: var(--gold); }
 .search .btn { flex: 0 0 auto; white-space: nowrap; }
 

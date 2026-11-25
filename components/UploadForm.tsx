@@ -31,16 +31,20 @@ export function UploadForm() {
     setContent(await file.text());
   }
 
+  const words = countWords(content);
+  const tooShort = words > 0 && words < 200;
+  const weak = words >= 200 && words < 400;
+  const tooLong = words > 100000;
+
   return (
     <form className="form" action={formAction}>
-      <p className="hint">只需上传剧本 Markdown。标题、简介、分类和封面都由 AI 根据正文识别生成。</p>
-
       <div className="field">
-        <span>剧本文件</span>
+        <span>剧本文件（.md，≤2MB）</span>
         <label className="btn ghost file-btn">
           {fileName ? `已选：${fileName}` : "选择 .md 文件"}
           <input type="file" accept=".md,.markdown,text/markdown,text/plain" onChange={onFile} />
         </label>
+        <p className="hint">建议文件内用一级标题写剧名；也可不写，交给 AI 从正文识别。</p>
       </div>
 
       <label className="field">
@@ -50,9 +54,20 @@ export function UploadForm() {
           required
           value={content}
           onChange={(event) => setContent(event.target.value)}
-          placeholder="选好文件后会显示在这里；也可以直接粘贴 Markdown。"
+          placeholder={"选好文件后会显示在这里；也可以直接粘贴。\n\n示例：\n# 剧名\n\n第一场 …\n△动作\n角色：对白"}
         />
-        <p className="hint">{countWords(content)} 字 · 至少 200 字才能送审，400 字以上才有机会通过</p>
+        <p className={`hint${tooShort || tooLong ? " upload-warn" : ""}`}>
+          当前 {words} 字
+          {tooShort
+            ? " · 至少 200 字才能送审"
+            : weak
+              ? " · 已可送审，满 400 字更易过审"
+              : tooLong
+                ? " · 已超过 10 万字上限，请删减后再提交"
+                : words === 0
+                  ? " · 200～100000 字 · 400 字以上更易过审"
+                  : " · 符合字数要求"}
+        </p>
       </label>
 
       {fileError ? <p className="alert">{fileError}</p> : null}
