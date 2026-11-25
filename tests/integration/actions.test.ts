@@ -247,7 +247,7 @@ describe("签到、充值、解锁、投稿", () => {
     );
   });
 
-  it("太短的稿不能入库，够字数的稿先待审", async () => {
+  it("太短的稿不能入库，够字数的稿直接上架", async () => {
     const user = await register("庚");
     const current = await activate(user.token);
     const tooShort = await uploadAction(empty, form({ content: "只有几个字。" }));
@@ -259,11 +259,11 @@ describe("签到、充值、解锁、投稿", () => {
     const uploaded = await redirectUrl(() => uploadAction(empty, form({ content: script.content })));
     const workId = Number(uploaded.replace("/works/", ""));
     const detail = getWorkDetail(workId);
-    expect(detail?.status).toBe("pending");
+    expect(detail?.status).toBe("published");
     expect(detail?.author_id).toBe(current.id);
     expect(detail?.title.length).toBeGreaterThanOrEqual(2);
     expect(detail?.summary.length).toBeGreaterThanOrEqual(10);
-    expect((await unlockAction(empty, form({ workId: String(workId) }))).error).toBe("这篇还不能解锁");
+    expect((await unlockAction(empty, form({ workId: String(workId) }))).error).toBe("这是你自己的稿件");
 
     for (let index = 0; index < 49; index += 1) {
       insertWork({

@@ -146,17 +146,17 @@ export async function uploadAction(_prev: ActionState, formData: FormData): Prom
   if (words < 200) return { error: "正文至少 200 字" };
   if (words > 100000) return { error: "正文请控制在 10 万字以内" };
 
-  // 现阶段先批量入库：只识别元数据，暂不过审、不上架、不生成封面。
+  // 批量上架阶段：识别元数据后直接发布，不做严审拦截。
   const meta = await extractWorkMeta(content);
   const { title, summary, category, kind } = meta;
   const review = {
-    score: 0,
-    grade: "待审",
-    decision: "reject" as const,
+    score: 6.5,
+    grade: "乙",
+    decision: "approve" as const,
     source: "local" as const,
-    summary: "已入库，等待统一审核。",
-    advice: ["先攒够一批稿再统一过审与生成封面。"],
-    dimensions: { plot: 0, character: 0, pacing: 0, language: 0, completeness: 0 },
+    summary: `《${title}》已上架。`,
+    advice: ["批量上架阶段直接发布；稍后可再统一精审与换封面。"],
+    dimensions: { plot: 6.5, character: 6.5, pacing: 6.5, language: 6.5, completeness: 6.5 },
   };
 
   let id = 0;
@@ -171,11 +171,27 @@ export async function uploadAction(_prev: ActionState, formData: FormData): Prom
       price: 0,
       review,
       wordCount: words,
-      status: "pending",
+      status: "published",
     });
   } catch (error) {
     if (error instanceof WorkLimitError) return { error: error.message };
     return { error: "保存失败，请稍后再试" };
+  }
+
+  // 封面异步尽力生成；失败不影响上架
+  try {
+    const { createReviewCover } = await import("@/lib/cover");
+    await createReviewCover({
+      id,
+      title,
+      summary,
+      category,
+      kind,
+      grade: review.grade,
+      content,
+    });
+  } catch {
+    /* ignore */
   }
 
   revalidateAll();

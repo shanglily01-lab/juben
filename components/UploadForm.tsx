@@ -76,7 +76,7 @@ export function UploadForm() {
           {state.error}
         </p>
       ) : null}
-      <SubmitButton idle="上传入库（待审）" pending="识别并保存中…" />
+      <SubmitButton idle="上传并上架" pending="识别并上架中…" />
     </form>
   );
 }
