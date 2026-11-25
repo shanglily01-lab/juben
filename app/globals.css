@@ -214,22 +214,24 @@ button.buyout-done,
   padding: 0;
   border: 0;
   display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 8px;
 }
 .pay-radios:disabled { opacity: 0.6; }
 .pay-radios-legend {
+  grid-column: 1 / -1;
   padding: 0;
-  margin: 0 0 8px;
+  margin: 0 0 2px;
   font-size: 13px;
   color: var(--ink-soft);
 }
 .pay-radio {
   display: grid;
-  grid-template-columns: 20px 22px 1fr;
+  grid-template-columns: 18px 20px 1fr;
   align-items: center;
-  gap: 10px;
-  min-height: 52px;
-  padding: 0 14px;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 12px;
   border-radius: 14px;
   border: 1px solid var(--line-strong);
   background: #fff;
