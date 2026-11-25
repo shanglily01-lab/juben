@@ -109,12 +109,12 @@ MOBEN_DATA_DIR=${DATA_DIR}
 # SMTP_USER=
 # SMTP_PASS=
 # MAIL_FROM=大黄书 <noreply@${DOMAIN}>
-# 推荐 Gemini 审稿+封面：
+# 推荐 Gemini 审稿+封面（2.0-flash 已下线）：
 # AI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
 # AI_API_KEY=
-# AI_MODEL=gemini-2.0-flash
+# AI_MODEL=gemini-3.8-flash
 # AI_IMAGE_PROVIDER=gemini
-# AI_IMAGE_MODEL=gemini-2.5-flash-image
+# AI_IMAGE_MODEL=gemini-nano-banana-2.1
 # AI_IMAGE_SIZE=2:3
 EOF
   chmod 600 "$ENV_FILE"

@@ -42,7 +42,7 @@ describe("剧情封面", () => {
 
   it("模型名带 gemini 时走 Google 出图配置", () => {
     process.env.AI_API_KEY = "test";
-    process.env.AI_IMAGE_MODEL = "gemini-2.5-flash-image";
+    process.env.AI_IMAGE_MODEL = "gemini-nano-banana-2.1";
     delete process.env.AI_IMAGE_PROVIDER;
     delete process.env.AI_IMAGE_BASE_URL;
     delete process.env.AI_BASE_URL;

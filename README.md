@@ -31,14 +31,16 @@ npm test
 ```
 AI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
 AI_API_KEY=你的_Gemini_密钥
-AI_MODEL=gemini-2.0-flash
+AI_MODEL=gemini-3.8-flash
 
 AI_IMAGE_PROVIDER=gemini
-AI_IMAGE_MODEL=gemini-2.5-flash-image
+AI_IMAGE_MODEL=gemini-nano-banana-2.1
 AI_IMAGE_SIZE=2:3
 
 SESSION_SECRET=一长串随机字符
 ```
+
+（`gemini-2.0-flash` 已下线；审稿用 `gemini-3.8-flash`，封面用 `gemini-nano-banana-2.1`。）
 
 密钥在 https://aistudio.google.com/apikey 申请。也可用 DeepSeek 审稿 + SiliconFlow 出图，见 `.env.example`。不配图生模型时，封面回退到站内 SVG 模板。
 
