@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { PackList } from "@/components/PackList";
+import { PendingTopupBanner } from "@/components/PendingTopupBanner";
 import { getCurrentUser } from "@/lib/auth";
 import { CHECKIN_REWARDS, INVITEE_COINS, INVITER_COINS, SIGNUP_COINS } from "@/lib/coins";
 import { listLedger } from "@/lib/db";
@@ -37,6 +38,7 @@ export default async function WalletPage({
       </section>
 
       {params.ok === "1" ? <p className="note">充值已到账。</p> : null}
+      <PendingTopupBanner />
       {need > 0 && user.coins < need ? (
         <p className="note">本次大约还需要 {need - user.coins} 金，选一档充值即可。</p>
       ) : null}

@@ -42,7 +42,7 @@ export async function POST(req: Request) {
       userId: user.id,
       userIp: clientIp(req),
       remark: `充值${pack.coins}金币`.slice(0, 40),
-      returnPath: `/pay/return?orderNo=${encodeURIComponent(mchOrderNo)}&topup=1`,
+      returnPath: `/pay/return?orderNo=${encodeURIComponent(mchOrderNo)}`,
       product: channel,
     });
     createPayOrder({

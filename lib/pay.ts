@@ -68,6 +68,13 @@ export async function createUpstreamPayment(input: {
   const origin = await requestOrigin();
   if (!origin) throw new Error("未配置 APP_ORIGIN，无法生成支付回调地址");
 
+  // 回跳尽量短、稳：只用 orderNo，避免上游截断或丢掉子路径后落到陌生默认页
+  const returnPath = input.returnPath.startsWith("/") ? input.returnPath : `/${input.returnPath}`;
+  const returnUrl = `${origin}${returnPath}`;
+  if (returnUrl.length > 240) {
+    throw new Error("支付回跳地址过长，请缩短 APP_ORIGIN 或订单号");
+  }
+
   const payload: Record<string, string | number> = {
     mchKey,
     product: input.product,
@@ -76,7 +83,7 @@ export async function createUpstreamPayment(input: {
     nonce: payNonce(),
     timestamp: String(Date.now()),
     notifyUrl: `${origin}/api/pay/notify`,
-    returnUrl: `${origin}${input.returnPath}`,
+    returnUrl,
     mchUserId: String(input.userId),
     userIp: input.userIp,
     remark: input.remark.slice(0, 40),

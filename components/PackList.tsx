@@ -56,13 +56,19 @@ export function PackList() {
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({ kind: "topup", packId: pack.id, channel }),
                     });
-                    const data = (await response.json()) as { ok?: boolean; msg?: string; payUrl?: string };
-                    if (!data.ok || !data.payUrl) {
+                    const data = (await response.json()) as {
+                      ok?: boolean;
+                      msg?: string;
+                      payUrl?: string;
+                      mchOrderNo?: string;
+                    };
+                    if (!data.ok || !data.mchOrderNo) {
                       setError(data.msg || "下单失败");
                       setPendingId("");
                       return;
                     }
-                    location.href = data.payUrl;
+                    // 先停在本站中转页再去上游，避免付完关页直接掉出 dahuangshu.vip
+                    location.href = `/pay/go?orderNo=${encodeURIComponent(data.mchOrderNo)}`;
                   } catch (err) {
                     setError(err instanceof Error ? err.message : "网络异常");
                     setPendingId("");

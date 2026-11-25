@@ -81,6 +81,16 @@ button { cursor: pointer; }
 }
 .lede, .intro { color: var(--ink-soft); line-height: 1.8; margin: 0; max-width: 40rem; }
 .page p a:not(.btn) { color: var(--gold); text-underline-offset: 0.22em; }
+button.linkish {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--gold);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.22em;
+  cursor: pointer;
+}
 .section-title {
   display: flex;
   justify-content: space-between;
