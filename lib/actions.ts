@@ -144,7 +144,7 @@ export async function uploadAction(_prev: ActionState, formData: FormData): Prom
   const content = text(formData, "content").replace(/\r\n/g, "\n");
   const words = countWords(content);
   if (words < 200) return { error: "正文至少 200 字" };
-  if (words > 100000) return { error: "正文请控制在 10 万字以内" };
+  if (words > 500000) return { error: "正文请控制在 50 万字以内" };
 
   // 批量上架阶段：识别元数据后直接发布，不做严审拦截。
   const meta = await extractWorkMeta(content);

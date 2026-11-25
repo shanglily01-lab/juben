@@ -19,8 +19,8 @@ export default async function UploadPage() {
       </p>
       <ul className="rules upload-rules">
         <li>格式：仅支持 .md / .markdown（也可用纯文本粘贴）。</li>
-        <li>字数：至少 200 字；建议 400 字以上；上限 10 万字。</li>
-        <li>文件：单个文件不超过 2MB；每人最多保存 50 篇。</li>
+        <li>字数：至少 200 字；建议 400 字以上；上限 50 万字。</li>
+        <li>文件：单个文件不超过 5MB；每人最多保存 50 篇。</li>
         <li>内容：请写清场次、人物、△动作和对白。</li>
         <li>流程：当前为批量上架，上传即发布到书库，不做严审拦截。</li>
         <li>封面：上传后按主剧情生成；若未配出图 API，则用站内模板图。</li>

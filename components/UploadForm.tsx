@@ -18,8 +18,8 @@ export function UploadForm() {
   async function onFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (file.size > 2_000_000) {
-      setFileError("文件请小于 2MB");
+    if (file.size > 5_000_000) {
+      setFileError("文件请小于 5MB");
       return;
     }
     if (!/\.(md|markdown|txt)$/i.test(file.name) && !/^text\//.test(file.type || "")) {
@@ -34,12 +34,12 @@ export function UploadForm() {
   const words = countWords(content);
   const tooShort = words > 0 && words < 200;
   const weak = words >= 200 && words < 400;
-  const tooLong = words > 100000;
+  const tooLong = words > 500000;
 
   return (
     <form className="form" action={formAction}>
       <div className="field">
-        <span>剧本文件（.md，≤2MB）</span>
+        <span>剧本文件（.md，≤5MB）</span>
         <label className="btn ghost file-btn">
           {fileName ? `已选：${fileName}` : "选择 .md 文件"}
           <input type="file" accept=".md,.markdown,text/markdown,text/plain" onChange={onFile} />
@@ -63,9 +63,9 @@ export function UploadForm() {
             : weak
               ? " · 已可送审，建议再写到 400 字以上"
               : tooLong
-                ? " · 已超过 10 万字上限，请删减后再提交"
+                ? " · 已超过 50 万字上限，请删减后再提交"
                 : words === 0
-                  ? " · 200～100000 字 · 建议 400 字以上"
+                  ? " · 200～500000 字 · 建议 400 字以上"
                   : " · 符合字数要求"}
         </p>
       </label>
