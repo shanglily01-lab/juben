@@ -34,6 +34,9 @@ export function SiteChrome({ user, children }: { user: ChromeUser; children: Rea
             <small>短剧剧本</small>
           </span>
         </a>
+        <form className="desk-search" action="/browse">
+          <input name="q" placeholder="搜索短剧" aria-label="搜索短剧" />
+        </form>
         <nav className="desk-nav" aria-label="目录">
           <a href="/browse" aria-current={scripts ? "page" : undefined}>
             短剧
@@ -51,9 +54,6 @@ export function SiteChrome({ user, children }: { user: ChromeUser; children: Rea
             我的
           </a>
         </nav>
-        <form className="desk-search" action="/browse">
-          <input name="q" placeholder="搜索短剧" aria-label="搜索短剧" />
-        </form>
         <div className="head-actions">
           <a className="icon-link mobile-search" href="/browse">
             搜索
