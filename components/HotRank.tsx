@@ -1,3 +1,4 @@
+import { coverSrc } from "@/lib/cover";
 import { formatPurchases, formatReads, kindLabel } from "@/lib/format";
 import type { PublicWork } from "@/lib/types";
 
@@ -28,7 +29,7 @@ export function HotRank({
                     : ` · ${formatReads(work.readCount)}`}
               </span>
             </span>
-            <img src={`/covers/${work.id}`} alt="" />
+            <img src={coverSrc(work.id)} alt="" />
           </a>
         </li>
       ))}

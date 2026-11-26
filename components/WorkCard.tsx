@@ -1,4 +1,5 @@
 import { categoryName } from "@/lib/categories";
+import { coverSrc } from "@/lib/cover";
 import { formatReads, kindLabel, shelfPriceLabel, shelfSpec } from "@/lib/format";
 import type { PublicWork } from "@/lib/types";
 
@@ -7,7 +8,7 @@ export function WorkCard({ work }: { work: PublicWork }) {
   return (
     <a className={`card cat-${work.category}`} href={`/works/${work.id}`}>
       <div className="card-poster">
-        <img src={`/covers/${work.id}`} alt="" />
+        <img src={coverSrc(work.id)} alt="" />
         <span className={stamp}>{work.grade}</span>
         <span className="card-reads">{formatReads(work.readCount)}</span>
         <div className="card-top">

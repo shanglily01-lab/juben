@@ -14,6 +14,11 @@ function devOrigins() {
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   allowedDevOrigins: devOrigins(),
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "6mb",
+    },
+  },
 };
 
 export default nextConfig;

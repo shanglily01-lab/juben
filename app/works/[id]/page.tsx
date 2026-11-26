@@ -12,7 +12,7 @@ import { ReviewCard } from "@/components/ReviewCard";
 import { WorkPurchase } from "@/components/WorkPurchase";
 import { getCurrentUser, isAdminUser } from "@/lib/auth";
 import { categoryName } from "@/lib/categories";
-import { hasAiCoverConfig } from "@/lib/cover";
+import { coverSrc, hasAiCoverConfig } from "@/lib/cover";
 import {
   countDiscussionsByWork,
   getWorkBuyoutUserId,
@@ -44,7 +44,7 @@ export default async function WorkPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ ep?: string }>;
+  searchParams: Promise<{ ep?: string; cover?: string }>;
 }) {
   const { id: raw } = await params;
   const id = Number(raw);
@@ -96,7 +96,7 @@ export default async function WorkPage({
     <div className="wrap page">
       <div className="work-layout">
         <header className="work-head">
-          <img className="work-cover" src={`/covers/${work.id}`} alt="" />
+          <img className="work-cover" src={coverSrc(work.id)} alt="" />
           <div>
             <p className="kicker">
               {kindLabel(work.kind)} · {categoryName(work.category)}
@@ -115,6 +115,9 @@ export default async function WorkPage({
             <p className="intro" style={{ marginTop: 10 }}>
               {work.summary}
             </p>
+            {query.cover === "ok" && isAdmin ? (
+              <p className="note">封面已替换。若仍看到旧图，请再刷新一次。</p>
+            ) : null}
             {showBuy ? (
               <WorkPurchase
                 workId={work.id}

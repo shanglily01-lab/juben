@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { getAdminUser } from "@/lib/auth";
 import { categoryName } from "@/lib/categories";
+import { coverSrc } from "@/lib/cover";
 import { listOpsWorks } from "@/lib/db";
 import { formatDate, kindLabel } from "@/lib/format";
 
@@ -58,7 +59,7 @@ export default async function OpsWorksPage({
           {items.map((work) => (
             <li key={work.id}>
               <a className="ops-work-row" href={`/works/${work.id}`}>
-                <img src={`/covers/${work.id}?v=${work.id}`} alt="" width={48} height={64} />
+                <img src={coverSrc(work.id)} alt="" width={48} height={64} />
                 <span className="ops-work-body">
                   <strong>{work.title}</strong>
                   <small>

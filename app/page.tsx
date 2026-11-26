@@ -8,6 +8,7 @@ import {
   listRecommendRankWorks,
   listWorks,
 } from "@/lib/db";
+import { coverSrc } from "@/lib/cover";
 import { formatReads, kindLabel, shelfPriceLabel, shelfSpec } from "@/lib/format";
 import type { PublicWork } from "@/lib/types";
 
@@ -70,7 +71,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
             <a href={`/works/${featured.id}`}>打开</a>
           </div>
           <a className="feature" href={`/works/${featured.id}`}>
-            <img className="feature-cover" src={`/covers/${featured.id}`} alt="" />
+            <img className="feature-cover" src={coverSrc(featured.id)} alt="" />
             <div className="feature-copy">
               <span className="feature-label">本期</span>
               <div className="card-top">

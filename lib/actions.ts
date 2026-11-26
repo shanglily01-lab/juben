@@ -439,7 +439,7 @@ export async function adminUploadCoverAction(_prev: ActionState, formData: FormD
   revalidatePath("/ops/works");
   revalidatePath("/");
   revalidatePath("/browse");
-  return { error: "" };
+  redirect(`/works/${workId}?cover=ok`);
 }
 
 /** 管理员：重新跑一遍审核（AI/规则）。 */

@@ -395,6 +395,7 @@ async function requestOpenAiStyleImage(base: string, apiKey: string, model: stri
 }
 
 async function tryImage(input: CoverInput) {
+  if (hasManualCover(input.id)) return false;
   const { model, apiKey, base, size, useGemini } = imageConfig();
   lastCoverError = "";
   if (!apiKey || !model) {
@@ -454,6 +455,7 @@ export async function upgradeCoverWithAi(input: CoverInput) {
 
 /** 强制用 AI 重出封面；失败时保留/回退 SVG 模板。 */
 export async function regenerateCoverWithAi(input: CoverInput) {
+  clearManualCover(input.id);
   if (!hasAiCoverConfig()) {
     ensureSvgCover(input, true);
     return { ok: false as const, error: "未配置 AI 出图（需要 AI_IMAGE_MODEL 与 API Key）" };
@@ -479,33 +481,77 @@ export function readCover(id: number) {
   return undefined;
 }
 
+function manualCoverPath(id: number) {
+  return path.join(coverDir(), `${id}.manual`);
+}
+
+export function hasManualCover(id: number) {
+  return fs.existsSync(manualCoverPath(id));
+}
+
+export function clearManualCover(id: number) {
+  fs.rmSync(manualCoverPath(id), { force: true });
+}
+
+/** 封面文件修改时间，用来打破浏览器缓存。 */
+export function coverRevision(id: number) {
+  const { png, jpg, webp, svg } = coverPaths(id);
+  for (const file of [png, jpg, webp, svg]) {
+    if (!fs.existsSync(file)) continue;
+    return Math.floor(fs.statSync(file).mtimeMs);
+  }
+  return 0;
+}
+
+export function coverSrc(id: number) {
+  const revision = coverRevision(id);
+  return revision ? `/covers/${id}?v=${revision}` : `/covers/${id}`;
+}
+
 export function removeCoverFiles(id: number) {
   const { png, jpg, webp, svg } = coverPaths(id);
   fs.rmSync(png, { force: true });
   fs.rmSync(jpg, { force: true });
   fs.rmSync(webp, { force: true });
   fs.rmSync(svg, { force: true });
+  clearManualCover(id);
+}
+
+function sniffCoverExt(bytes: Buffer, mime: string): "png" | "jpg" | "webp" | null {
+  if (bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) {
+    return "png";
+  }
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "jpg";
+  if (
+    bytes.length >= 12 &&
+    bytes.toString("ascii", 0, 4) === "RIFF" &&
+    bytes.toString("ascii", 8, 12) === "WEBP"
+  ) {
+    return "webp";
+  }
+  const type = mime.toLowerCase();
+  if (type === "image/png" || type === "image/x-png") return "png";
+  if (type === "image/jpeg" || type === "image/jpg") return "jpg";
+  if (type === "image/webp") return "webp";
+  return null;
 }
 
 const COVER_UPLOAD_MAX = 4 * 1024 * 1024;
 
-/** 管理员上传自定义封面（png / jpeg / webp）。 */
+/** 管理员上传自定义封面（png / jpeg / webp）。上传后不再被自动出图覆盖。 */
 export function saveUploadedCover(id: number, bytes: Buffer, mime: string) {
   if (!Number.isInteger(id) || id <= 0) throw new Error("作品无效");
   if (bytes.length === 0) throw new Error("图片是空的");
-  if (bytes.length > COVER_UPLOAD_MAX) throw new Error("封面请控制在 4MB 以内");
+  if (bytes.length > COVER_UPLOAD_MAX) throw new Error("封面请控制在 4MB 以内，建议 900×1200");
 
-  const type = mime.toLowerCase();
-  let ext: "png" | "jpg" | "webp";
-  if (type === "image/png" || type === "image/x-png") ext = "png";
-  else if (type === "image/jpeg" || type === "image/jpg") ext = "jpg";
-  else if (type === "image/webp") ext = "webp";
-  else throw new Error("封面仅支持 PNG / JPG / WEBP");
+  const ext = sniffCoverExt(bytes, mime);
+  if (!ext) throw new Error("封面仅支持 PNG / JPG / WEBP，建议 900×1200");
 
   const paths = coverPaths(id);
   fs.mkdirSync(paths.dir, { recursive: true });
   removeCoverFiles(id);
   const target = ext === "png" ? paths.png : ext === "jpg" ? paths.jpg : paths.webp;
   fs.writeFileSync(target, bytes);
+  fs.writeFileSync(manualCoverPath(id), new Date().toISOString());
   return { type: ext === "png" ? "image/png" : ext === "jpg" ? "image/jpeg" : "image/webp" };
 }
