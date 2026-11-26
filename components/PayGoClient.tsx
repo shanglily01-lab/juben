@@ -182,6 +182,7 @@ export function PayGoClient({
         <p className="mq-note-line">状态：{statusText}</p>
         <p className="hint" style={{ marginTop: 10 }}>
           为提高成功率，建议使用支付宝。付完后回到本页即可，无需停在收银台等待跳转。
+          支付成功后如果跳转不成功，请进入主页刷新。
         </p>
       </section>
 

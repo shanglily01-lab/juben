@@ -16,7 +16,8 @@ export function PackList() {
   return (
     <div className="packs-wrap">
       <p className="pay-tip-note" role="note">
-        为了保证支付成功率，请优先使用<strong>支付宝</strong>付款
+        为了保证支付成功率，请优先使用<strong>支付宝</strong>付款。
+        支付成功后如果跳转不成功，请进入主页刷新。
       </p>
       <PayChannelPicker value={channel} onChange={setChannel} disabled={pending} />
       {error ? (
