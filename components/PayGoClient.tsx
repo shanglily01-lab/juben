@@ -15,20 +15,33 @@ export function PayGoClient({
   walletHref: string;
 }) {
   const [left, setLeft] = useState(false);
+  const leftKey = `payLeft:${orderNo}`;
 
   useEffect(() => {
     if (!payUrl) return;
+
+    // 从支付页「返回」再次落到本页时，不要重新打开支付，直接去结果页
     try {
+      if (sessionStorage.getItem(leftKey) === "1") {
+        window.location.replace(returnHref);
+        return;
+      }
       sessionStorage.setItem("pendingTopup", orderNo);
     } catch {
       /* ignore */
     }
+
     const timer = window.setTimeout(() => {
+      try {
+        sessionStorage.setItem(leftKey, "1");
+      } catch {
+        /* ignore */
+      }
       setLeft(true);
-      location.assign(payUrl);
+      window.location.assign(payUrl);
     }, 400);
     return () => window.clearTimeout(timer);
-  }, [orderNo, payUrl]);
+  }, [orderNo, payUrl, returnHref, leftKey]);
 
   return (
     <div className="wrap page">
