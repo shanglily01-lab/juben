@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 
-import { findUserById, isMainAuthorEmail } from "@/lib/db";
+import { findUserById, isAdminAccount } from "@/lib/db";
 import type { SessionUser } from "@/lib/types";
 
 export const SESSION_COOKIE = "moben_session";
@@ -51,9 +51,9 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
   };
 }
 
-/** 主账号「大黄书」登录即为管理员。 */
+/** 账号 admin 登录即为管理员（换封面 / 复审）。 */
 export function isAdminUser(user: SessionUser | null | undefined) {
-  return Boolean(user && isMainAuthorEmail(user.email));
+  return isAdminAccount(user);
 }
 
 export async function getAdminUser(): Promise<SessionUser | null> {

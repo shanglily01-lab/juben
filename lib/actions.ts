@@ -90,6 +90,9 @@ export async function registerAction(_prev: ActionState, formData: FormData): Pr
   if (!/^[\u4e00-\u9fffA-Za-z0-9_]{2,16}$/.test(username)) {
     return { error: "名字用 2 到 16 位中文、字母或数字" };
   }
+  if (username.toLowerCase() === "admin" || email === "admin@moben.local") {
+    return { error: "这个名字不可用" };
+  }
   if (!isEmail(email)) return { error: "邮箱格式不对" };
   if (password.length < 8) return { error: "密码至少 8 位" };
   if (password.length > 72) return { error: "密码最多 72 位" };

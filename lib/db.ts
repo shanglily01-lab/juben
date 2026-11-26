@@ -14,9 +14,15 @@ import { dataDir } from "@/lib/paths";
 import { seedIfEmpty } from "@/lib/seed";
 import type { Kind, PublicWork, Review } from "@/lib/types";
 
-/** API 开放上传默认挂到的主账号。 */
+/** API 开放上传默认挂到的主账号（内容归属，不是后台管理员）。 */
 export const MAIN_AUTHOR_EMAIL = "editor@moben.local";
 export const MAIN_AUTHOR_USERNAME = "大黄书";
+
+/** 后台管理员账号：登录名 admin。 */
+export const ADMIN_USERNAME = "admin";
+export const ADMIN_EMAIL = "admin@moben.local";
+/** 未配置 ADMIN_PASSWORD 时的默认密码（上线后请改）。 */
+export const ADMIN_DEFAULT_PASSWORD = "admin888888";
 
 type UserRow = {
   id: number;
@@ -105,7 +111,7 @@ type CheckinRow = {
 };
 
 const globalDb = globalThis as unknown as { __moben?: DatabaseSync; __mobenSchema?: number };
-const SCHEMA = 19;
+const SCHEMA = 20;
 const ACTIVATION_MS = 24 * 60 * 60 * 1000;
 const RESEND_MS = 60 * 1000;
 
@@ -323,8 +329,9 @@ function migrate(db: DatabaseSync) {
     WHERE status = 'pending';
   `);
 
-  // SCHEMA 17+：主账号「大黄书」= 管理员；启动时按 MAIN_AUTHOR_PASSWORD 同步可登录密码。
-  ensureMainAuthor(db, { syncPassword: true });
+  // 内容主账号（开放上传归属）+ 独立 admin 后台账号。
+  ensureMainAuthor(db);
+  ensureAdminUser(db, { syncPassword: true });
 }
 
 function freshInviteCode(db: DatabaseSync) {
@@ -336,13 +343,9 @@ function freshInviteCode(db: DatabaseSync) {
   throw new Error("邀请码没有生成成功");
 }
 
-/** 确保站内主账号存在（开放上传默认作者 = 管理员）。 */
-export function ensureMainAuthor(
-  db: DatabaseSync = getDb(),
-  options: { syncPassword?: boolean } = {},
-) {
+/** 确保站内主账号存在（开放上传默认作者）。 */
+export function ensureMainAuthor(db: DatabaseSync = getDb()) {
   const now = nowIso();
-  const envPassword = process.env.MAIN_AUTHOR_PASSWORD?.trim();
   const existing = db
     .prepare("SELECT id, username FROM users WHERE email = ?")
     .get(MAIN_AUTHOR_EMAIL) as { id: number; username: string } | undefined;
@@ -353,18 +356,6 @@ export function ensureMainAuthor(
     db.prepare(
       "UPDATE users SET email_verified_at = COALESCE(email_verified_at, ?) WHERE id = ?",
     ).run(now, existing.id);
-    // 仅启动迁移时同步密码，避免每次上传都跑 scrypt。
-    if (options.syncPassword && envPassword && envPassword.length >= 8) {
-      const row = db.prepare("SELECT password_hash FROM users WHERE id = ?").get(existing.id) as
-        | { password_hash: string }
-        | undefined;
-      if (!row || !verifyPassword(envPassword, row.password_hash)) {
-        db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(
-          hashPassword(envPassword),
-          existing.id,
-        );
-      }
-    }
     return existing.id;
   }
 
@@ -372,9 +363,7 @@ export function ensureMainAuthor(
     .prepare("SELECT id FROM users WHERE username = ?")
     .get(MAIN_AUTHOR_USERNAME) as { id: number } | undefined;
   const username = nameTaken ? `大黄书主站` : MAIN_AUTHOR_USERNAME;
-  const passwordHash = hashPassword(
-    envPassword && envPassword.length >= 8 ? envPassword : randomBytes(24).toString("hex"),
-  );
+  const passwordHash = hashPassword(randomBytes(24).toString("hex"));
   const info = db
     .prepare(
       `INSERT INTO users (username, email, password_hash, coins, created_at, email_verified_at, invite_code)
@@ -393,6 +382,61 @@ export function getMainAuthor() {
 
 export function isMainAuthorEmail(email: string | null | undefined) {
   return Boolean(email && email.toLowerCase() === MAIN_AUTHOR_EMAIL);
+}
+
+function resolvedAdminPassword() {
+  const fromEnv = process.env.ADMIN_PASSWORD?.trim();
+  if (fromEnv && fromEnv.length >= 8) return fromEnv;
+  return ADMIN_DEFAULT_PASSWORD;
+}
+
+/** 确保后台管理员账号 admin 存在，并可按 ADMIN_PASSWORD 同步密码。 */
+export function ensureAdminUser(
+  db: DatabaseSync = getDb(),
+  options: { syncPassword?: boolean } = {},
+) {
+  const now = nowIso();
+  const password = resolvedAdminPassword();
+  const existing = db
+    .prepare("SELECT id FROM users WHERE email = ? OR username = ?")
+    .get(ADMIN_EMAIL, ADMIN_USERNAME) as { id: number } | undefined;
+
+  if (existing) {
+    db.prepare("UPDATE users SET username = ?, email = ? WHERE id = ?").run(
+      ADMIN_USERNAME,
+      ADMIN_EMAIL,
+      existing.id,
+    );
+    db.prepare(
+      "UPDATE users SET email_verified_at = COALESCE(email_verified_at, ?) WHERE id = ?",
+    ).run(now, existing.id);
+    if (options.syncPassword) {
+      const row = db.prepare("SELECT password_hash FROM users WHERE id = ?").get(existing.id) as
+        | { password_hash: string }
+        | undefined;
+      if (!row || !verifyPassword(password, row.password_hash)) {
+        db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(
+          hashPassword(password),
+          existing.id,
+        );
+      }
+    }
+    return existing.id;
+  }
+
+  const info = db
+    .prepare(
+      `INSERT INTO users (username, email, password_hash, coins, created_at, email_verified_at, invite_code)
+       VALUES (?, ?, ?, 0, ?, ?, ?)`,
+    )
+    .run(ADMIN_USERNAME, ADMIN_EMAIL, hashPassword(password), now, now, freshInviteCode(db));
+  return Number(info.lastInsertRowid);
+}
+
+export function isAdminAccount(user: { email?: string | null; username?: string | null } | null | undefined) {
+  if (!user) return false;
+  if (user.username === ADMIN_USERNAME) return true;
+  return Boolean(user.email && user.email.toLowerCase() === ADMIN_EMAIL);
 }
 
 function backfillInviteCodes(db: DatabaseSync) {
