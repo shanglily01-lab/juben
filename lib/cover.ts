@@ -291,8 +291,15 @@ function summarizeApiError(status: number, text: string) {
 }
 
 /** Google Gemini / Nano Banana 原生出图。 */
+/** 服务器所在地区被 Google 拒绝时，可把 GEMINI_API_BASE 指到日本/美国的中转。 */
+export function geminiApiBase() {
+  const custom = process.env.GEMINI_API_BASE?.trim();
+  if (custom) return custom.replace(/\/$/, "");
+  return "https://generativelanguage.googleapis.com/v1beta";
+}
+
 async function requestGeminiImage(apiKey: string, model: string, prompt: string, aspectRatio: string) {
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+  const endpoint = `${geminiApiBase()}/models/${encodeURIComponent(model)}:generateContent`;
   const bodies: Record<string, unknown>[] = [
     {
       contents: [{ role: "user", parts: [{ text: prompt }] }],
