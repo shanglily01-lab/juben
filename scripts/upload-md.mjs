@@ -1,22 +1,15 @@
 #!/usr/bin/env node
 /**
- * 批量上传 Markdown 到 /api/upload/md
+ * 批量上传 Markdown 到 /api/upload/md（无需 Token / 用户）
  *
  * 用法：
- *   UPLOAD_API_TOKEN=xxx ORIGIN=https://你的域名 node scripts/upload-md.mjs ./稿件目录
- *   UPLOAD_API_TOKEN=xxx ORIGIN=http://127.0.0.1:3000 AUTHOR=你的用户名 node scripts/upload-md.mjs ./a.md ./b.md
+ *   ORIGIN=https://你的域名 node scripts/upload-md.mjs ./稿件目录
+ *   ORIGIN=http://127.0.0.1:3000 node scripts/upload-md.mjs ./a.md ./b.md
  */
 import fs from "node:fs";
 import path from "node:path";
 
 const origin = (process.env.ORIGIN || process.env.APP_ORIGIN || "http://127.0.0.1:3000").replace(/\/$/, "");
-const token = (process.env.UPLOAD_API_TOKEN || process.env.ADMIN_SECRET || "").trim();
-const author = (process.env.AUTHOR || process.env.UPLOAD_AUTHOR_LOGIN || "").trim();
-
-if (!token) {
-  console.error("缺少 UPLOAD_API_TOKEN（或 ADMIN_SECRET）");
-  process.exit(1);
-}
 
 const inputs = process.argv.slice(2);
 if (!inputs.length) {
@@ -48,16 +41,10 @@ let ok = 0;
 let fail = 0;
 for (const file of files) {
   const content = fs.readFileSync(file, "utf8");
-  const body = { content };
-  if (author) body.author = author;
-
   const res = await fetch(`${origin}/api/upload/md`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content }),
   });
   const data = await res.json().catch(() => ({}));
   if (res.ok && data.ok) {

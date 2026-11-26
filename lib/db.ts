@@ -9,9 +9,14 @@ import { INVITEE_COINS, INVITER_COINS, SIGNUP_COINS, checkinReward } from "@/lib
 import { splitEpisodes } from "@/lib/episodes";
 import { BUYOUT_COINS, BUYOUT_YUAN } from "@/lib/pricing";
 import { nowIso, previousDay, shanghaiToday } from "@/lib/format";
+import { hashPassword } from "@/lib/password";
 import { dataDir } from "@/lib/paths";
 import { seedIfEmpty } from "@/lib/seed";
 import type { Kind, PublicWork, Review } from "@/lib/types";
+
+/** API 开放上传默认挂到的主账号。 */
+export const MAIN_AUTHOR_EMAIL = "editor@moben.local";
+export const MAIN_AUTHOR_USERNAME = "大黄书";
 
 type UserRow = {
   id: number;
@@ -100,7 +105,7 @@ type CheckinRow = {
 };
 
 const globalDb = globalThis as unknown as { __moben?: DatabaseSync; __mobenSchema?: number };
-const SCHEMA = 16;
+const SCHEMA = 17;
 const ACTIVATION_MS = 24 * 60 * 60 * 1000;
 const RESEND_MS = 60 * 1000;
 
@@ -316,23 +321,6 @@ function migrate(db: DatabaseSync) {
     db.prepare("UPDATE users SET username = '大黄书' WHERE email = 'editor@moben.local'").run();
   }
 
-  // 清掉编辑室历史样本。
-  db.exec(`
-    DELETE FROM discussions WHERE work_id IN (
-      SELECT id FROM works WHERE author_id IN (SELECT id FROM users WHERE email = 'editor@moben.local')
-    );
-    DELETE FROM unlocks WHERE work_id IN (
-      SELECT id FROM works WHERE author_id IN (SELECT id FROM users WHERE email = 'editor@moben.local')
-    );
-    UPDATE pay_orders SET work_id = NULL WHERE work_id IN (
-      SELECT id FROM works WHERE author_id IN (SELECT id FROM users WHERE email = 'editor@moben.local')
-    );
-    UPDATE requirements SET delivered_work_id = NULL WHERE delivered_work_id IN (
-      SELECT id FROM works WHERE author_id IN (SELECT id FROM users WHERE email = 'editor@moben.local')
-    );
-    DELETE FROM works WHERE author_id IN (SELECT id FROM users WHERE email = 'editor@moben.local');
-  `);
-
   // SCHEMA 16：把「待审」稿直接上架，方便批量上传。
   db.exec(`
     UPDATE works
@@ -341,6 +329,9 @@ function migrate(db: DatabaseSync) {
         grade = CASE WHEN grade IN ('待审', '未过', '') OR grade IS NULL THEN '乙' ELSE grade END
     WHERE status = 'pending';
   `);
+
+  // SCHEMA 17：开放 API 上传挂主账号「大黄书」，不再每次启动清掉该账号稿件。
+  ensureMainAuthor(db);
 }
 
 function freshInviteCode(db: DatabaseSync) {
@@ -350,6 +341,43 @@ function freshInviteCode(db: DatabaseSync) {
     if (!taken.get(code)) return code;
   }
   throw new Error("邀请码没有生成成功");
+}
+
+/** 确保站内主账号存在（开放上传 API 默认作者）。 */
+export function ensureMainAuthor(db: DatabaseSync = getDb()) {
+  const now = nowIso();
+  const existing = db
+    .prepare("SELECT id, username FROM users WHERE email = ?")
+    .get(MAIN_AUTHOR_EMAIL) as { id: number; username: string } | undefined;
+  if (existing) {
+    if (!existing.username) {
+      db.prepare("UPDATE users SET username = ? WHERE id = ?").run(MAIN_AUTHOR_USERNAME, existing.id);
+    }
+    db.prepare(
+      "UPDATE users SET email_verified_at = COALESCE(email_verified_at, ?) WHERE id = ?",
+    ).run(now, existing.id);
+    return existing.id;
+  }
+
+  const nameTaken = db
+    .prepare("SELECT id FROM users WHERE username = ?")
+    .get(MAIN_AUTHOR_USERNAME) as { id: number } | undefined;
+  const username = nameTaken ? `大黄书主站` : MAIN_AUTHOR_USERNAME;
+  const passwordHash = hashPassword(randomBytes(24).toString("hex"));
+  const info = db
+    .prepare(
+      `INSERT INTO users (username, email, password_hash, coins, created_at, email_verified_at, invite_code)
+       VALUES (?, ?, ?, 0, ?, ?, ?)`,
+    )
+    .run(username, MAIN_AUTHOR_EMAIL, passwordHash, now, now, freshInviteCode(db));
+  return Number(info.lastInsertRowid);
+}
+
+export function getMainAuthor() {
+  const id = ensureMainAuthor();
+  const user = findUserById(id);
+  if (!user) throw new Error("主账号未就绪");
+  return { id: user.id, username: user.username };
 }
 
 function backfillInviteCodes(db: DatabaseSync) {
