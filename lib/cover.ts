@@ -270,6 +270,26 @@ type GeminiPart = {
   inline_data?: { mime_type?: string; data?: string };
 };
 
+let lastCoverError = "";
+
+export function getLastCoverError() {
+  return lastCoverError;
+}
+
+function setCoverError(message: string) {
+  lastCoverError = message.slice(0, 280);
+}
+
+function summarizeApiError(status: number, text: string) {
+  try {
+    const data = JSON.parse(text) as { error?: { message?: string; status?: string } };
+    const msg = data.error?.message || data.error?.status || text;
+    return `HTTP ${status}: ${String(msg).slice(0, 220)}`;
+  } catch {
+    return `HTTP ${status}: ${text.slice(0, 220)}`;
+  }
+}
+
 /** Google Gemini / Nano Banana 原生出图。 */
 async function requestGeminiImage(apiKey: string, model: string, prompt: string, aspectRatio: string) {
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
@@ -288,7 +308,12 @@ async function requestGeminiImage(apiKey: string, model: string, prompt: string,
         imageConfig: { aspectRatio },
       },
     },
+    {
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
+    },
   ];
+  let lastError = "";
   for (const body of bodies) {
     const response = await fetch(endpoint, {
       method: "POST",
@@ -297,12 +322,23 @@ async function requestGeminiImage(apiKey: string, model: string, prompt: string,
         "x-goog-api-key": apiKey,
       },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(60000),
+      signal: AbortSignal.timeout(90000),
     });
-    if (!response.ok) continue;
-    const payload = (await response.json()) as {
-      candidates?: { content?: { parts?: GeminiPart[] } }[];
+    const raw = await response.text();
+    if (!response.ok) {
+      lastError = summarizeApiError(response.status, raw);
+      continue;
+    }
+    let payload: {
+      candidates?: { content?: { parts?: GeminiPart[] }; finishReason?: string }[];
+      promptFeedback?: { blockReason?: string };
     };
+    try {
+      payload = JSON.parse(raw);
+    } catch {
+      lastError = "返回不是合法 JSON";
+      continue;
+    }
     const parts = payload.candidates?.[0]?.content?.parts || [];
     for (const part of parts) {
       const inline = part.inlineData || part.inline_data;
@@ -311,7 +347,10 @@ async function requestGeminiImage(apiKey: string, model: string, prompt: string,
       const bytes = Buffer.from(data, "base64");
       if (bytes.length >= 32) return bytes;
     }
+    const block = payload.promptFeedback?.blockReason || payload.candidates?.[0]?.finishReason;
+    lastError = block ? `未返回图片（${block}）` : "接口成功但未返回图片数据";
   }
+  setCoverError(lastError || "未返回图片");
   return undefined;
 }
 
@@ -320,6 +359,7 @@ async function requestOpenAiStyleImage(base: string, apiKey: string, model: stri
     { model, prompt, image_size: size, num_inference_steps: 20 },
     { model, prompt, size, n: 1 },
   ];
+  let lastError = "";
   for (const body of bodies) {
     const response = await fetch(`${base}/images/generations`, {
       method: "POST",
@@ -327,7 +367,10 @@ async function requestOpenAiStyleImage(base: string, apiKey: string, model: stri
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(45000),
     });
-    if (!response.ok) continue;
+    if (!response.ok) {
+      lastError = summarizeApiError(response.status, await response.text());
+      continue;
+    }
     const payload = (await response.json()) as ImageApiPayload;
     const first = payload.data?.[0] || payload.images?.[0];
     if (!first) continue;
@@ -340,12 +383,15 @@ async function requestOpenAiStyleImage(base: string, apiKey: string, model: stri
       if (bytes) return bytes;
     }
   }
+  if (lastError) setCoverError(lastError);
   return undefined;
 }
 
 async function tryImage(input: CoverInput) {
   const { model, apiKey, base, size, useGemini } = imageConfig();
+  lastCoverError = "";
   if (!apiKey || !model) {
+    setCoverError("缺少 AI_IMAGE_MODEL 或 API Key");
     console.warn("[cover] skip AI image: missing AI_IMAGE_MODEL / API key", { id: input.id, model: !!model, key: !!apiKey });
     return false;
   }
@@ -355,7 +401,8 @@ async function tryImage(input: CoverInput) {
       ? await requestGeminiImage(apiKey, model, prompt, size)
       : await requestOpenAiStyleImage(base, apiKey, model, prompt, size);
     if (!bytes) {
-      console.warn("[cover] AI image empty response", { id: input.id, model, useGemini });
+      if (!lastCoverError) setCoverError("出图接口未返回图片");
+      console.warn("[cover] AI image empty response", { id: input.id, model, useGemini, error: lastCoverError });
       return false;
     }
     const { dir, png, jpg, webp, svg } = coverPaths(input.id);
@@ -366,7 +413,9 @@ async function tryImage(input: CoverInput) {
     fs.rmSync(svg, { force: true });
     return true;
   } catch (error) {
-    console.error("[cover] AI image failed", input.id, error instanceof Error ? error.message : error);
+    const message = error instanceof Error ? error.message : String(error);
+    setCoverError(message);
+    console.error("[cover] AI image failed", input.id, message);
     return false;
   }
 }
@@ -405,7 +454,11 @@ export async function regenerateCoverWithAi(input: CoverInput) {
   ensureSvgCover(input, true);
   const ok = await tryImage(input);
   if (!ok) {
-    return { ok: false as const, error: "AI 出图失败，请稍后重试或检查出图配置" };
+    const detail = getLastCoverError();
+    return {
+      ok: false as const,
+      error: detail ? `AI 出图失败：${detail}` : "AI 出图失败，请稍后重试或检查出图配置",
+    };
   }
   return { ok: true as const };
 }
