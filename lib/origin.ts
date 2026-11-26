@@ -54,3 +54,13 @@ export async function requestOrigin() {
     allowRequestHost: process.env.NODE_ENV !== "production",
   });
 }
+
+/** 支付回跳/通知必须用稳定绝对域名，避免落到空白页或支付方域名。 */
+export async function payOrigin() {
+  const configured = publicOrigin({ configured: process.env.APP_ORIGIN });
+  if (configured) return configured;
+  // 生产兜底：宁可固定主域，也不能拼出相对地址让上游回跳丢站
+  if (process.env.NODE_ENV === "production") return "https://dahuangshu.vip";
+  const live = await requestOrigin();
+  return live || "http://127.0.0.1:3000";
+}

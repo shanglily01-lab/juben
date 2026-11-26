@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 
 import { BUYOUT_YUAN, unlockYuanFromScore, type PayChannelId } from "@/lib/pricing";
-import { requestOrigin } from "@/lib/origin";
+import { payOrigin } from "@/lib/origin";
 
 /** 法币订单目前只用于充值入金币；旧 unlock/buyout/requirement 保留兼容。 */
 export type PayKind = "topup" | "buyout" | "unlock" | "requirement";
@@ -65,14 +65,17 @@ export async function createUpstreamPayment(input: {
   const mchKey = requireEnv("PAY_MCH_KEY");
   const secret = requireEnv("PAY_MCH_SECRET");
   const apiBase = (process.env.PAY_API_BASE || "https://tsapi-ruihe.tsqqai.com").replace(/\/$/, "");
-  const origin = await requestOrigin();
+  const origin = await payOrigin();
   if (!origin) throw new Error("未配置 APP_ORIGIN，无法生成支付回调地址");
 
-  // 回跳尽量短、稳：只用 orderNo，避免上游截断或丢掉子路径后落到陌生默认页
+  // 回跳用无查询串路径：/pay/r/订单号，减少上游截断 ? 后参数导致空白页
   const returnPath = input.returnPath.startsWith("/") ? input.returnPath : `/${input.returnPath}`;
   const returnUrl = `${origin}${returnPath}`;
   if (returnUrl.length > 240) {
     throw new Error("支付回跳地址过长，请缩短 APP_ORIGIN 或订单号");
+  }
+  if (!/^https:\/\/[a-z0-9.-]+\//i.test(returnUrl) && process.env.NODE_ENV === "production") {
+    throw new Error(`支付回跳地址无效：${returnUrl}`);
   }
 
   const payload: Record<string, string | number> = {

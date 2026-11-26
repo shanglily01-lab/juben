@@ -52,7 +52,8 @@ export function PayReturnClient() {
             /* ignore */
           }
           setText("充值成功，正在返回钱包…");
-          router.replace("/wallet?ok=1");
+          // 用整页跳转，避免支付 WebView 里客户端路由丢域
+          location.replace("/wallet?ok=1");
           return;
         }
         if (["FAIL", "TIMEOUT", "EXCEPTION", "CLOSE"].includes(status)) {

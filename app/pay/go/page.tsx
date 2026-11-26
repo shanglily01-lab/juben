@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { PayGoClient } from "@/components/PayGoClient";
 import { getCurrentUser } from "@/lib/auth";
 import { findPayOrder } from "@/lib/db";
+import { payOrigin } from "@/lib/origin";
 
 export const metadata: Metadata = { title: "去支付" };
 
@@ -25,7 +26,9 @@ export default async function PayGoPage({
   const payUrl = order.pay_url || "";
   if (!payUrl) redirect("/wallet");
 
-  const returnHref = `/pay/return?orderNo=${encodeURIComponent(orderNo)}&topup=1`;
+  const site = await payOrigin();
+  const returnHref = `${site}/pay/r/${encodeURIComponent(orderNo)}`;
+  const walletHref = `${site}/wallet`;
 
-  return <PayGoClient orderNo={orderNo} payUrl={payUrl} returnHref={returnHref} />;
+  return <PayGoClient orderNo={orderNo} payUrl={payUrl} returnHref={returnHref} walletHref={walletHref} />;
 }

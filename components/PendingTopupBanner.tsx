@@ -20,7 +20,7 @@ export function PendingTopupBanner() {
   return (
     <p className="note">
       有一笔充值待确认。
-      <a href={`/pay/return?orderNo=${encodeURIComponent(orderNo)}`}>查看支付结果</a>
+      <a href={`/pay/r/${encodeURIComponent(orderNo)}`}>查看支付结果</a>
       {" · "}
       <button
         type="button"

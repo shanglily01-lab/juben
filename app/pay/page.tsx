@@ -12,7 +12,7 @@ export default async function PayPage({
   const params = await searchParams;
   const orderNo = (params.orderNo || params.mchOrderNo || params.o || "").trim();
   if (orderNo) {
-    redirect(`/pay/return?orderNo=${encodeURIComponent(orderNo)}`);
+    redirect(`/pay/r/${encodeURIComponent(orderNo)}`);
   }
   redirect("/wallet");
 }

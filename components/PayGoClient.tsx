@@ -2,15 +2,17 @@
 
 import { useEffect, useState } from "react";
 
-/** 站内中转：先停在本域，再跳上游；关掉支付页时还能回到这里点「已完成」。 */
+/** 站内中转：先停在本域，再跳上游；回跳与钱包一律用绝对地址，防止丢域。 */
 export function PayGoClient({
   orderNo,
   payUrl,
   returnHref,
+  walletHref,
 }: {
   orderNo: string;
   payUrl: string;
   returnHref: string;
+  walletHref: string;
 }) {
   const [left, setLeft] = useState(false);
 
@@ -23,7 +25,7 @@ export function PayGoClient({
     }
     const timer = window.setTimeout(() => {
       setLeft(true);
-      location.href = payUrl;
+      location.assign(payUrl);
     }, 400);
     return () => window.clearTimeout(timer);
   }, [orderNo, payUrl]);
@@ -34,19 +36,19 @@ export function PayGoClient({
       <h1>{left ? "请在支付页完成付款" : "正在打开支付…"}</h1>
       <p className="intro">
         {left
-          ? "付完后若没有自动回来，点下面按钮查看结果。不要关到浏览器空白页。"
+          ? "付完后应自动回到大黄书。若停在空白页，点下面「查看支付结果」回站。"
           : "马上跳转到微信 / 支付宝，请勿关闭本站。"}
       </p>
       <div className="stack" style={{ marginTop: 18 }}>
         <a className="btn solid" href={returnHref}>
-          我已完成支付
+          查看支付结果
         </a>
         {payUrl ? (
           <a className="btn ghost" href={payUrl}>
             重新打开支付页
           </a>
         ) : null}
-        <a className="btn ghost" href="/wallet">
+        <a className="btn ghost" href={walletHref}>
           返回钱包
         </a>
       </div>
