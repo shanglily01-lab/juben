@@ -1,4 +1,3 @@
-import { CATEGORIES } from "@/lib/categories";
 import { HotRank } from "@/components/HotRank";
 import { WorkCard } from "@/components/WorkCard";
 import {
@@ -28,41 +27,6 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   return (
     <div className="wrap page">
       {params.activated === "1" ? <p className="note">邮箱已激活，金币已入账。</p> : null}
-      <section className="hero">
-        <div className="hero-copy">
-          <p className="kicker">大黄书 · 短剧与小说</p>
-          <h1>
-            按类入匣，
-            <br />
-            读完再解锁。
-          </h1>
-          <p className="lede">
-            短剧剧本与小说同站收录。先行试读，满意再购版权或连载全章。
-          </p>
-          <div className="hero-actions">
-            <a className="btn solid" href="/browse">
-              浏览书库
-            </a>
-            <a className="btn ghost" href="/hot">
-              查看榜单
-            </a>
-          </div>
-        </div>
-        <div className="hero-mark" aria-hidden>
-          <img className="hero-seal" src="/logo-mark.svg" width={64} height={64} alt="" />
-          <span className="hero-vert">短剧 · 小说</span>
-        </div>
-      </section>
-
-      <div className="cat-row" aria-label="分类">
-        {CATEGORIES.map((item, index) => (
-          <a className={`chip-block cat-${item.slug}`} key={item.slug} href={`/category/${item.slug}`}>
-            <em>{String(index + 1).padStart(2, "0")}</em>
-            <strong>{item.name}</strong>
-            <span>{item.blurb}</span>
-          </a>
-        ))}
-      </div>
 
       {featured ? (
         <>
@@ -128,24 +92,6 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
 
       <Shelf title="推荐短剧" href="/browse?kind=script" works={scripts} />
       <Shelf title="推荐小说" href="/browse?kind=novel" works={novels} />
-
-      <div className="section-title">
-        <h2>怎么用</h2>
-      </div>
-      <div className="steps">
-        <article className="step">
-          <b>01</b>
-          注册并激活邮箱。每天签到、邀请好友也进同一份余额。
-        </article>
-        <article className="step">
-          <b>02</b>
-          上传 Markdown，或直接在页面里写。提交后自动审核、打分、决定上不上架。
-        </article>
-        <article className="step">
-          <b>03</b>
-          免费篇直接读。付费篇按集数与评分计价（¥20 起），也可单篇买断，买后可分集阅读、下载。
-        </article>
-      </div>
     </div>
   );
 }
