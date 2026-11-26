@@ -1,18 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-function isMobilePayContext() {
-  if (typeof window === "undefined") return true;
-  const ua = navigator.userAgent || "";
-  if (/MicroMessenger|AlipayClient|iPhone|iPad|Android|Mobile/i.test(ua)) return true;
-  return window.matchMedia("(max-width: 880px), (hover: none)").matches;
-}
+import { openPayUrl } from "@/lib/pay-open";
+
+const POLL_FIRST_MS = 2000;
+const POLL_INTERVAL_MS = 5000;
+const POLL_MAX_MS = 5 * 60 * 1000;
 
 /**
- * 上游收银台付完常不回跳。
- * 桌面：新窗口支付 + 本页轮询。
- * 手机：同页打开支付；返回本页后 pageshow/轮询自动确认。
+ * 对齐 https://lvgdj.com 瑞禾支付前台：
+ * 本页建单后打开收银台（新窗口），本页轮询到账；付完不依赖上游回跳。
  */
 export function PayGoClient({
   orderNo,
@@ -24,148 +22,150 @@ export function PayGoClient({
   returnHref?: string;
   walletHref: string;
 }) {
-  const [statusText, setStatusText] = useState("准备支付…");
+  const [statusText, setStatusText] = useState("支付处理中");
   const [paid, setPaid] = useState(false);
-  const [opened, setOpened] = useState(false);
-  const [mobile, setMobile] = useState(true);
-  const triesRef = useRef(0);
+  const [confirming, setConfirming] = useState(false);
+  const openedRef = useRef(false);
+  const stoppedRef = useRef(false);
+
+  const clearPending = useCallback(() => {
+    try {
+      sessionStorage.removeItem("pendingTopup");
+      sessionStorage.removeItem(`payLeft:${orderNo}`);
+    } catch {
+      /* ignore */
+    }
+  }, [orderNo]);
+
+  const queryOnce = useCallback(async () => {
+    const response = await fetch(`/api/pay/query?orderNo=${encodeURIComponent(orderNo)}`, {
+      cache: "no-store",
+      credentials: "same-origin",
+    });
+    if (response.status === 401) return { kind: "auth" as const };
+    const data = (await response.json()) as { order?: { payStatus?: string } };
+    const status = String(data.order?.payStatus || "").toUpperCase();
+    if (status === "SUCCESS") return { kind: "ok" as const };
+    if (["FAIL", "TIMEOUT", "EXCEPTION", "CLOSE"].includes(status)) {
+      return { kind: "fail" as const, status };
+    }
+    return { kind: "wait" as const, status: status || "PROCESSING" };
+  }, [orderNo]);
 
   useEffect(() => {
-    setMobile(isMobilePayContext());
-  }, []);
+    if (!orderNo || !payUrl) return;
+    stoppedRef.current = false;
 
-  useEffect(() => {
-    if (!orderNo) return;
     try {
       sessionStorage.setItem("pendingTopup", orderNo);
       sessionStorage.setItem(`payLeft:${orderNo}`, "1");
-      if (sessionStorage.getItem(`payUrl:${orderNo}`)) setOpened(true);
-    } catch {
-      /* ignore */
-    }
-
-    let stopped = false;
-    let timer = 0;
-
-    const clearPending = () => {
-      try {
-        sessionStorage.removeItem("pendingTopup");
-        sessionStorage.removeItem(`payLeft:${orderNo}`);
-      } catch {
-        /* ignore */
-      }
-    };
-
-    const goWalletOk = () => {
-      clearPending();
-      window.location.replace("/wallet?ok=1");
-    };
-
-    const pollOnce = async () => {
-      triesRef.current += 1;
-      try {
-        const response = await fetch(`/api/pay/query?orderNo=${encodeURIComponent(orderNo)}`, {
-          cache: "no-store",
-          credentials: "same-origin",
-        });
-        if (response.status === 401) {
-          setStatusText("登录已失效，请重新登录");
-          return "auth";
-        }
-        const data = (await response.json()) as { order?: { payStatus?: string } };
-        const status = String(data.order?.payStatus || "").toUpperCase();
-        if (status === "SUCCESS") {
-          setPaid(true);
-          setStatusText("充值成功，正在返回钱包…");
-          goWalletOk();
-          return "ok";
-        }
-        if (["FAIL", "TIMEOUT", "EXCEPTION", "CLOSE"].includes(status)) {
-          setStatusText("支付未完成，可重新打开支付或返回钱包。");
-          return "fail";
-        }
-      } catch {
-        /* keep */
-      }
-      return "wait";
-    };
-
-    const loop = async () => {
-      if (stopped) return;
-      const result = await pollOnce();
-      if (result === "ok" || result === "fail" || result === "auth") return;
-      setStatusText(
-        opened
-          ? `等待到账中…（第 ${triesRef.current} 次）付完请回到本页`
-          : "点下方「打开支付」开始充值",
-      );
-      if (!stopped) timer = window.setTimeout(loop, 1500);
-    };
-
-    const onBack = () => {
-      if (document.visibilityState === "hidden") return;
-      setOpened(true);
-      setStatusText("已从支付页返回，正在确认…");
-      void pollOnce();
-    };
-
-    window.addEventListener("pageshow", onBack);
-    document.addEventListener("visibilitychange", onBack);
-    void loop();
-
-    return () => {
-      stopped = true;
-      window.clearTimeout(timer);
-      window.removeEventListener("pageshow", onBack);
-      document.removeEventListener("visibilitychange", onBack);
-    };
-  }, [orderNo, opened]);
-
-  const openPay = () => {
-    if (!payUrl) return;
-    setOpened(true);
-    try {
       sessionStorage.setItem(`payUrl:${orderNo}`, payUrl);
-      sessionStorage.setItem(`payLeft:${orderNo}`, "1");
     } catch {
       /* ignore */
     }
 
-    if (isMobilePayContext()) {
-      setStatusText("正在打开支付…付完后请用系统返回键回到大黄书。");
-      window.location.assign(payUrl);
-      return;
+    // 进入等待页即打开收银台（与青果一致：先开窗，本页留下轮询）
+    if (!openedRef.current) {
+      openedRef.current = true;
+      openPayUrl(payUrl);
     }
 
-    setStatusText("已打开支付窗口。付完后回到本页，或点「我已完成支付」。");
-    const win = window.open(payUrl, "_blank", "noopener,noreferrer");
-    if (!win) window.location.assign(payUrl);
-  };
+    let timer = 0;
+    let usedFirst = false;
+    const startedAt = Date.now();
+    let pendingWhileHidden = false;
 
-  const checkNow = async () => {
-    setStatusText("正在确认支付结果…");
-    try {
-      const response = await fetch(`/api/pay/query?orderNo=${encodeURIComponent(orderNo)}`, {
-        cache: "no-store",
-        credentials: "same-origin",
-      });
-      const data = (await response.json()) as { order?: { payStatus?: string } };
-      const status = String(data.order?.payStatus || "").toUpperCase();
-      if (status === "SUCCESS") {
-        setPaid(true);
-        setStatusText("充值成功，正在返回钱包…");
-        try {
-          sessionStorage.removeItem("pendingTopup");
-          sessionStorage.removeItem(`payLeft:${orderNo}`);
-        } catch {
-          /* ignore */
-        }
+    const finishOk = () => {
+      setPaid(true);
+      setStatusText("已完成");
+      setConfirming(false);
+      clearPending();
+      window.setTimeout(() => {
         window.location.replace("/wallet?ok=1");
+      }, 800);
+    };
+
+    const tick = async () => {
+      if (stoppedRef.current) return;
+      if (document.hidden) {
+        pendingWhileHidden = true;
         return;
       }
-      setStatusText("尚未到账。若已付款，请稍等再点一次。");
+      if (Date.now() - startedAt > POLL_MAX_MS) {
+        setStatusText("查询超时，请点「我已支付」或刷新钱包查看");
+        setConfirming(false);
+        return;
+      }
+      try {
+        const result = await queryOnce();
+        if (stoppedRef.current) return;
+        if (result.kind === "ok") {
+          finishOk();
+          return;
+        }
+        if (result.kind === "auth") {
+          setStatusText("登录已失效，请重新登录");
+          return;
+        }
+        if (result.kind === "fail") {
+          setStatusText("支付未完成，可重新打开收银台或换支付宝重试");
+          setConfirming(false);
+          return;
+        }
+        setStatusText("支付处理中");
+      } catch {
+        /* 暂时失败，继续轮询 */
+      }
+      const delay = usedFirst ? POLL_INTERVAL_MS : POLL_FIRST_MS;
+      usedFirst = true;
+      timer = window.setTimeout(tick, delay);
+    };
+
+    const onVisibility = () => {
+      if (!document.hidden && pendingWhileHidden && !stoppedRef.current) {
+        pendingWhileHidden = false;
+        void tick();
+      }
+    };
+
+    document.addEventListener("visibilitychange", onVisibility);
+    timer = window.setTimeout(tick, POLL_FIRST_MS);
+
+    return () => {
+      stoppedRef.current = true;
+      window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [orderNo, payUrl, clearPending, queryOnce]);
+
+  const reopen = () => {
+    openPayUrl(payUrl);
+    setStatusText("已重新打开收银台");
+  };
+
+  const markPaid = async () => {
+    setConfirming(true);
+    setStatusText("正在确认…");
+    try {
+      const result = await queryOnce();
+      if (result.kind === "ok") {
+        setPaid(true);
+        setStatusText("已完成");
+        clearPending();
+        window.setTimeout(() => window.location.replace("/wallet?ok=1"), 600);
+        return;
+      }
+      if (result.kind === "fail") {
+        setStatusText("支付未完成，可重新打开收银台");
+      } else if (result.kind === "auth") {
+        setStatusText("登录已失效，请重新登录");
+      } else {
+        setStatusText("尚未到账，请稍候，系统仍在自动确认");
+      }
     } catch {
-      setStatusText("确认失败，请稍后重试。");
+      setStatusText("确认失败，请稍后重试");
+    } finally {
+      setConfirming(false);
     }
   };
 
@@ -173,30 +173,24 @@ export function PayGoClient({
     <div className="wrap page pay-wait-page">
       <section className="pay-wait-card" aria-live="polite">
         <p className="kicker">支付</p>
-        <h1>{paid ? "充值成功" : "完成付款"}</h1>
-        <p className="intro">{statusText}</p>
-        <ul className="pay-wait-steps">
-          <li>
-            <em>1</em>
-            <span>打开支付页，用微信 / 支付宝付款</span>
-          </li>
-          <li>
-            <em>2</em>
-            <span>{mobile ? "付完后点系统「返回」回到大黄书" : "付完后回到本页等待页"}</span>
-          </li>
-          <li>
-            <em>3</em>
-            <span>点「我已完成支付」，或等待自动到账</span>
-          </li>
-        </ul>
+        <h1>{paid ? "充值成功" : "请完成付款"}</h1>
+        <p className="mq-note-line">
+          已打开收银台，请在新窗口完成支付。
+          <br />
+          订单号：{orderNo}
+        </p>
+        <p className="mq-note-line">状态：{statusText}</p>
+        <p className="hint" style={{ marginTop: 10 }}>
+          为提高成功率，建议使用支付宝。付完后回到本页即可，无需停在收银台等待跳转。
+        </p>
       </section>
 
       <div className="pay-wait-dock">
-        <button className="btn solid" type="button" onClick={openPay}>
-          {opened ? "重新打开支付" : "打开支付"}
+        <button className="btn ghost" type="button" onClick={reopen}>
+          重新打开收银台
         </button>
-        <button className="btn solid pay-wait-confirm" type="button" onClick={() => void checkNow()}>
-          我已完成支付
+        <button className="btn solid" type="button" disabled={confirming || paid} onClick={() => void markPaid()}>
+          {confirming ? "正在确认…" : paid ? "已完成" : "我已支付"}
         </button>
         <div className="pay-wait-links">
           <a href={`/pay/r/${encodeURIComponent(orderNo)}`}>查看结果</a>

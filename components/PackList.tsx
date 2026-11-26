@@ -7,13 +7,17 @@ import { PACKS } from "@/lib/coins";
 import { type PayChannelId, yuanLabel } from "@/lib/pricing";
 
 export function PackList() {
-  const [channel, setChannel] = useState<PayChannelId>("005");
+  // 对齐青果：默认支付宝，成功率更高
+  const [channel, setChannel] = useState<PayChannelId>("004");
   const [error, setError] = useState("");
   const [pendingId, setPendingId] = useState("");
   const [pending, start] = useTransition();
 
   return (
     <div className="packs-wrap">
+      <p className="pay-tip-note" role="note">
+        为了保证支付成功率，请优先使用<strong>支付宝</strong>付款
+      </p>
       <PayChannelPicker value={channel} onChange={setChannel} disabled={pending} />
       {error ? (
         <p className="alert" role="alert">
@@ -22,7 +26,7 @@ export function PackList() {
       ) : null}
       <div className="packs">
         {PACKS.map((pack) => (
-          <div className="pack" key={pack.id}>
+          <div className={`pack${pending && pendingId === pack.id ? " is-busy" : ""}`} key={pack.id}>
             <div className="pack-info">
               <span className="pack-label">{pack.label}</span>
               <p className="pack-coins">
@@ -56,19 +60,13 @@ export function PackList() {
                       setPendingId("");
                       return;
                     }
-                    // 先进本站等待页；手机勿抢先 window.open（易丢回跳），由等待页再打开
                     try {
                       sessionStorage.setItem("pendingTopup", data.mchOrderNo);
                       if (data.payUrl) sessionStorage.setItem(`payUrl:${data.mchOrderNo}`, data.payUrl);
                     } catch {
                       /* ignore */
                     }
-                    const desktop =
-                      typeof window !== "undefined" &&
-                      window.matchMedia("(min-width: 881px) and (hover: hover)").matches;
-                    if (desktop && data.payUrl) {
-                      window.open(data.payUrl, "_blank", "noopener,noreferrer");
-                    }
+                    // 先进等待页，由等待页按青果方式打开收银台（避免本页误跳）
                     location.href = `/pay/go?orderNo=${encodeURIComponent(data.mchOrderNo)}`;
                   } catch (err) {
                     setError(err instanceof Error ? err.message : "网络异常");
@@ -77,7 +75,7 @@ export function PackList() {
                 });
               }}
             >
-              {pending && pendingId === pack.id ? "跳转支付…" : yuanLabel(pack.yuan)}
+              {pending && pendingId === pack.id ? "创建订单…" : yuanLabel(pack.yuan)}
             </button>
           </div>
         ))}

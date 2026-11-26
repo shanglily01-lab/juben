@@ -1757,11 +1757,9 @@ body:has(.app-paying) {
   box-shadow: 0 -4px 16px rgba(28, 25, 21, 0.06);
 }
 .pay-wait-dock .btn { width: 100%; min-height: 48px; border-radius: var(--radius); }
-.pay-wait-confirm {
-  background: #1c1c18 !important;
-  border-color: #1c1c18 !important;
-  color: #ffdea6 !important;
-  box-shadow: none !important;
+.pay-wait-dock .btn.ghost {
+  background: var(--surface-container);
+  border-color: var(--line-strong);
 }
 .pay-wait-links {
   display: flex;
@@ -1771,6 +1769,37 @@ body:has(.app-paying) {
   font-size: 13px;
 }
 .pay-wait-links a { color: var(--gold); text-underline-offset: 0.2em; }
+.mq-note-line {
+  margin: 0 0 8px;
+  color: var(--ink-soft);
+  line-height: 1.65;
+  word-break: break-all;
+}
+.pay-tip-note {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(201, 146, 10, 0.12);
+  border: 1px solid rgba(201, 146, 10, 0.28);
+  color: #5e4200;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.pay-tip-note strong { color: #271900; }
+.pay-radio-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.pay-radio-tag {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(22, 119, 255, 0.12);
+  color: #1677ff;
+}
+.pack.is-busy { opacity: 0.72; }
 
 @media (min-width: 880px) {
   .pay-wait-dock {

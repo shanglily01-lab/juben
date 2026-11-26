@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     if (body.kind !== "topup") {
       return NextResponse.json({ ok: false, msg: "请使用金币购买；法币仅用于充值" }, { status: 400 });
     }
-    const channel = body.channel || "005";
+    const channel = body.channel || "004";
     if (!isPayChannel(channel)) {
       return NextResponse.json({ ok: false, msg: "请选择微信或支付宝" }, { status: 400 });
     }
