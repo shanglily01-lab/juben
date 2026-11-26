@@ -4,15 +4,14 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { isCategory } from "@/lib/categories";
 import { normalizeInviteCode } from "@/lib/codes";
-import { countWords, safeNext } from "@/lib/format";
-import { ensureSvgCover, removeCoverFiles, upgradeCoverWithAi } from "@/lib/cover";
-import { extractWorkMeta } from "@/lib/extract-meta";
+import { safeNext } from "@/lib/format";
+import { removeCoverFiles } from "@/lib/cover";
 import { clearSession, getCurrentUser, setSession } from "@/lib/auth";
+import { publishMarkdownForUser } from "@/lib/upload-md";
 import {
   buyoutWorkWithCoins,
   checkIn,
   consumeActivationToken,
-  countWorksByAuthor,
   createDiscussion,
   createRequirement,
   deleteDiscussion,
@@ -24,7 +23,6 @@ import {
   getWorkDetail,
   hasUnlock,
   hasWorkBuyout,
-  insertWork,
   InvalidInviteError,
   isWorkBuyoutTaken,
   discardUnusedActivationToken,
@@ -33,7 +31,6 @@ import {
   registerUser,
   setRequirementMaking,
   unlockWork,
-  WorkLimitError,
 } from "@/lib/db";
 import { splitEpisodes } from "@/lib/episodes";
 import { sendActivationMail } from "@/lib/mail";
@@ -139,66 +136,12 @@ export async function logoutAction() {
 export async function uploadAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const user = await getCurrentUser();
   if (!user) return { error: "请先登录再投稿" };
-  if (countWorksByAuthor(user.id) >= 50) return { error: "每人最多保存 50 篇稿件" };
 
-  const content = text(formData, "content").replace(/\r\n/g, "\n");
-  const words = countWords(content);
-  if (words < 200) return { error: "正文至少 200 字" };
-  if (words > 500000) return { error: "正文请控制在 50 万字以内" };
-
-  // 批量上架阶段：识别元数据后直接发布，不做严审拦截。
-  const meta = await extractWorkMeta(content);
-  const { title, summary, category, kind } = meta;
-  const review = {
-    score: 6.5,
-    grade: "乙",
-    decision: "approve" as const,
-    source: "local" as const,
-    summary: `《${title}》已上架。`,
-    advice: ["批量上架阶段直接发布；稍后可再统一精审与换封面。"],
-    dimensions: { plot: 6.5, character: 6.5, pacing: 6.5, language: 6.5, completeness: 6.5 },
-  };
-
-  let id = 0;
-  try {
-    id = insertWork({
-      title,
-      kind,
-      category,
-      summary,
-      content,
-      authorId: user.id,
-      price: 0,
-      review,
-      wordCount: words,
-      status: "published",
-    });
-  } catch (error) {
-    if (error instanceof WorkLimitError) return { error: error.message };
-    return { error: "保存失败，请稍后再试" };
-  }
-
-  const coverInput = {
-    id,
-    title,
-    summary,
-    category,
-    kind,
-    grade: review.grade,
-    content,
-  };
-  // 先立刻写入模板封面，保证书库有图；AI 出图后台升级，不挡上架跳转
-  try {
-    ensureSvgCover(coverInput, true);
-  } catch (error) {
-    console.error("[cover] svg failed", id, error instanceof Error ? error.message : error);
-  }
-  void upgradeCoverWithAi(coverInput).catch((error) => {
-    console.error("[cover] ai upgrade failed", id, error instanceof Error ? error.message : error);
-  });
+  const result = await publishMarkdownForUser(user, text(formData, "content"));
+  if (!result.ok) return { error: result.error };
 
   revalidateAll();
-  redirect(`/works/${id}`);
+  redirect(result.url);
 }
 
 export async function unlockAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
