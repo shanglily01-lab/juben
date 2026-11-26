@@ -17,6 +17,7 @@ import {
   createRequirement,
   deleteDiscussion,
   deleteRejectedWork,
+  deleteWorkAsAdmin,
   deliverRequirement,
   findUserByEmail,
   findUserByLogin,
@@ -370,6 +371,19 @@ export async function deleteRejectedWorkAction(_prev: ActionState, formData: For
   removeCoverFiles(workId);
   revalidateAll();
   redirect("/mine");
+}
+
+/** 管理员删除任意剧本或小说。 */
+export async function adminDeleteWorkAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const admin = await getAdminUser();
+  if (!admin) return { error: "需要管理员账号" };
+  const workId = Number(text(formData, "workId"));
+  if (!Number.isInteger(workId) || workId <= 0) return { error: "找不到这篇" };
+  const result = deleteWorkAsAdmin(workId);
+  if (!result.ok) return { error: result.error };
+  removeCoverFiles(workId);
+  revalidateAll();
+  redirect("/ops/works");
 }
 
 /** 管理员：用 AI 自动生成封面（无需上传图片）。 */

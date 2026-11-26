@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 
 import {
+  adminDeleteWorkAction,
   adminGenerateCoverAction,
   adminRereviewAction,
   adminUpdateWorkAction,
@@ -35,6 +36,7 @@ export function AdminWorkPanel({
   const [coverState, coverAction, coverPending] = useActionState(adminUploadCoverAction, initial);
   const [reviewState, reviewAction, reviewPending] = useActionState(adminRereviewAction, initial);
   const [editState, editAction, editPending] = useActionState(adminUpdateWorkAction, initial);
+  const [deleteState, deleteAction, deletePending] = useActionState(adminDeleteWorkAction, initial);
 
   return (
     <section className="admin-panel" aria-label="管理员">
@@ -128,6 +130,26 @@ export function AdminWorkPanel({
         ) : null}
         <button className="btn solid" type="submit" disabled={editPending}>
           {editPending ? "保存中…" : "保存复审结果"}
+        </button>
+      </form>
+
+      <form
+        className="form admin-form"
+        action={deleteAction}
+        onSubmit={(event) => {
+          if (!window.confirm(`确定删除《${title}》？删除后不可恢复。`)) {
+            event.preventDefault();
+          }
+        }}
+      >
+        <input type="hidden" name="workId" value={workId} />
+        {deleteState.error ? (
+          <p className="alert" role="alert">
+            {deleteState.error}
+          </p>
+        ) : null}
+        <button className="btn danger" type="submit" disabled={deletePending}>
+          {deletePending ? "删除中…" : kind === "novel" ? "删除这篇小说" : "删除这篇剧本"}
         </button>
       </form>
     </section>
