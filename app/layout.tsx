@@ -1,9 +1,22 @@
 import type { Metadata, Viewport } from "next";
+import { Literata, Plus_Jakarta_Sans } from "next/font/google";
 
 import { PwaRegister } from "@/components/PwaRegister";
 import { SiteChrome } from "@/components/SiteChrome";
 import { getCurrentUser } from "@/lib/auth";
 import "./globals.css";
+
+const literata = Literata({
+  subsets: ["latin"],
+  variable: "--font-literata",
+  display: "swap",
+});
+
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-jakarta",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: { default: "大黄书剧本小说网", template: "%s · 大黄书剧本小说网" },
@@ -28,7 +41,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#fff6e4",
+  themeColor: "#fcf9f2",
 };
 
 export const dynamic = "force-dynamic";
@@ -36,7 +49,7 @@ export const dynamic = "force-dynamic";
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
   return (
-    <html lang="zh-CN">
+    <html lang="zh-CN" className={`${literata.variable} ${jakarta.variable}`}>
       <body>
         <SiteChrome user={user ? { username: user.username, coins: user.coins } : null}>
           {children}

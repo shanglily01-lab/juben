@@ -26,14 +26,14 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       {params.activated === "1" ? <p className="note">邮箱已激活，金币已入账。</p> : null}
       <section className="hero">
         <div className="hero-copy">
-          <p className="kicker">大黄书剧本小说网</p>
+          <p className="kicker">大黄书 · 短剧剧本</p>
           <h1>
             按类入匣，
             <br />
             读完再解锁。
           </h1>
           <p className="lede">
-            悬疑、历史、灾难、穿越。大黄书收来的短剧剧本和注册用户的投稿放在一起，先自动审核评级，付费篇按集数与质量计价。
+            精选高反转、快节奏爆款短剧剧本。先行试读，满意再购版权或连载全章。
           </p>
           <div className="hero-actions">
             <a className="btn solid" href="/browse">
@@ -45,7 +45,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           </div>
         </div>
         <div className="hero-mark" aria-hidden>
-          <img className="hero-seal" src="/logo-mark.svg" width={78} height={78} alt="" />
+          <img className="hero-seal" src="/logo-mark.svg" width={64} height={64} alt="" />
           <span className="hero-vert">短剧剧本</span>
         </div>
       </section>
