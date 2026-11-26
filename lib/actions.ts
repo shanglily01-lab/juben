@@ -4,9 +4,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { isCategory } from "@/lib/categories";
 import { normalizeInviteCode } from "@/lib/codes";
-import { safeNext } from "@/lib/format";
-import { removeCoverFiles } from "@/lib/cover";
-import { clearSession, getCurrentUser, setSession } from "@/lib/auth";
+import { reviewWork } from "@/lib/ai";
+import { clearSession, getAdminUser, getCurrentUser, setSession } from "@/lib/auth";
+import { removeCoverFiles, saveUploadedCover } from "@/lib/cover";
+import { gradeOf, safeNext } from "@/lib/format";
 import { publishMarkdownForUser } from "@/lib/upload-md";
 import {
   buyoutWorkWithCoins,
@@ -31,6 +32,7 @@ import {
   registerUser,
   setRequirementMaking,
   unlockWork,
+  updateWorkReview,
 } from "@/lib/db";
 import { splitEpisodes } from "@/lib/episodes";
 import { sendActivationMail } from "@/lib/mail";
@@ -42,7 +44,7 @@ import {
   unlockCoinsFromScore,
 } from "@/lib/pricing";
 import { parseBountyCoins } from "@/lib/requirements";
-import type { ActionState, Kind } from "@/lib/types";
+import type { ActionState, Kind, Review } from "@/lib/types";
 
 function isAdminSecret(raw: string) {
   const expected = process.env.ADMIN_SECRET?.trim();
@@ -358,4 +360,111 @@ export async function deleteRejectedWorkAction(_prev: ActionState, formData: For
   removeCoverFiles(workId);
   revalidateAll();
   redirect("/mine");
+}
+
+/** 管理员上传自定义封面。 */
+export async function adminUploadCoverAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const admin = await getAdminUser();
+  if (!admin) return { error: "需要管理员账号" };
+  const workId = Number(text(formData, "workId"));
+  if (!Number.isInteger(workId) || workId <= 0) return { error: "找不到这篇" };
+  const work = getWorkDetail(workId);
+  if (!work) return { error: "找不到这篇" };
+
+  const file = formData.get("cover");
+  if (!(file instanceof File) || file.size <= 0) return { error: "请选择封面图片" };
+  try {
+    const bytes = Buffer.from(await file.arrayBuffer());
+    saveUploadedCover(workId, bytes, file.type || "image/png");
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "封面保存失败" };
+  }
+
+  revalidatePath(`/works/${workId}`);
+  revalidatePath("/ops/works");
+  revalidatePath("/");
+  revalidatePath("/browse");
+  return { error: "" };
+}
+
+/** 管理员：重新跑一遍审核（AI/规则）。 */
+export async function adminRereviewAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const admin = await getAdminUser();
+  if (!admin) return { error: "需要管理员账号" };
+  const workId = Number(text(formData, "workId"));
+  if (!Number.isInteger(workId) || workId <= 0) return { error: "找不到这篇" };
+  const work = getWorkDetail(workId);
+  if (!work) return { error: "找不到这篇" };
+
+  const review = await reviewWork({
+    title: work.title,
+    kind: work.kind,
+    category: work.category,
+    summary: work.summary,
+    content: work.content,
+  });
+  review.grade = gradeOf(review.score);
+  const status = review.decision === "approve" ? "published" : "rejected";
+  const result = updateWorkReview(workId, { review, status });
+  if (!result.ok) return { error: result.error };
+
+  revalidatePath(`/works/${workId}`);
+  revalidatePath("/ops/works");
+  revalidatePath("/");
+  revalidatePath("/browse");
+  redirect(`/works/${workId}`);
+}
+
+/** 管理员：手工改分、档位、上架状态。 */
+export async function adminUpdateWorkAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const admin = await getAdminUser();
+  if (!admin) return { error: "需要管理员账号" };
+  const workId = Number(text(formData, "workId"));
+  if (!Number.isInteger(workId) || workId <= 0) return { error: "找不到这篇" };
+  const work = getWorkDetail(workId);
+  if (!work) return { error: "找不到这篇" };
+
+  const scoreRaw = Number(text(formData, "score"));
+  const score = Number.isFinite(scoreRaw) ? Math.max(1, Math.min(10, Math.round(scoreRaw * 10) / 10)) : work.score;
+  const statusRaw = text(formData, "status");
+  const status =
+    statusRaw === "published" || statusRaw === "rejected" || statusRaw === "pending"
+      ? statusRaw
+      : (work.status as "published" | "rejected" | "pending");
+  const paid = text(formData, "paid") === "1";
+  const note = text(formData, "note").slice(0, 180);
+  const grade = gradeOf(score);
+
+  let base: Review;
+  try {
+    base = JSON.parse(work.review_json) as Review;
+  } catch {
+    base = {
+      score,
+      grade,
+      decision: status === "rejected" ? "reject" : "approve",
+      source: "local",
+      summary: note || work.summary,
+      advice: [],
+      dimensions: { plot: score, character: score, pacing: score, language: score, completeness: score },
+    };
+  }
+
+  const review: Review = {
+    ...base,
+    score,
+    grade,
+    decision: status === "rejected" ? "reject" : "approve",
+    source: "local",
+    summary: note || base.summary || `《${work.title}》站长复审为 ${grade}。`,
+  };
+
+  const result = updateWorkReview(workId, { review, status, price: paid ? 1 : 0 });
+  if (!result.ok) return { error: result.error };
+
+  revalidatePath(`/works/${workId}`);
+  revalidatePath("/ops/works");
+  revalidatePath("/");
+  revalidatePath("/browse");
+  redirect(`/works/${workId}`);
 }

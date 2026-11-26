@@ -183,7 +183,13 @@ function coverDir() {
 
 export function coverPaths(id: number) {
   const dir = coverDir();
-  return { dir, png: path.join(dir, `${id}.png`), svg: path.join(dir, `${id}.svg`) };
+  return {
+    dir,
+    png: path.join(dir, `${id}.png`),
+    jpg: path.join(dir, `${id}.jpg`),
+    webp: path.join(dir, `${id}.webp`),
+    svg: path.join(dir, `${id}.svg`),
+  };
 }
 
 /** 从简介 + 正文抽出封面用的主剧情提示（不要书名水印）。 */
@@ -342,9 +348,11 @@ async function tryImage(input: CoverInput) {
       console.warn("[cover] AI image empty response", { id: input.id, model, useGemini });
       return false;
     }
-    const { dir, png, svg } = coverPaths(input.id);
+    const { dir, png, jpg, webp, svg } = coverPaths(input.id);
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(png, bytes);
+    fs.rmSync(jpg, { force: true });
+    fs.rmSync(webp, { force: true });
     fs.rmSync(svg, { force: true });
     return true;
   } catch (error) {
@@ -354,10 +362,16 @@ async function tryImage(input: CoverInput) {
 }
 
 export function ensureSvgCover(input: CoverInput, force = false) {
-  const { dir, png, svg } = coverPaths(input.id);
-  if (!force && (fs.existsSync(png) || fs.existsSync(svg))) return;
+  const { dir, png, jpg, webp, svg } = coverPaths(input.id);
+  if (!force && (fs.existsSync(png) || fs.existsSync(jpg) || fs.existsSync(webp) || fs.existsSync(svg))) {
+    return;
+  }
   fs.mkdirSync(dir, { recursive: true });
-  if (force) fs.rmSync(png, { force: true });
+  if (force) {
+    fs.rmSync(png, { force: true });
+    fs.rmSync(jpg, { force: true });
+    fs.rmSync(webp, { force: true });
+  }
   fs.writeFileSync(svg, renderCoverSvg(input));
 }
 
@@ -373,14 +387,41 @@ export async function upgradeCoverWithAi(input: CoverInput) {
 }
 
 export function readCover(id: number) {
-  const { png, svg } = coverPaths(id);
+  const { png, jpg, webp, svg } = coverPaths(id);
   if (fs.existsSync(png)) return { body: fs.readFileSync(png), type: "image/png" };
+  if (fs.existsSync(jpg)) return { body: fs.readFileSync(jpg), type: "image/jpeg" };
+  if (fs.existsSync(webp)) return { body: fs.readFileSync(webp), type: "image/webp" };
   if (fs.existsSync(svg)) return { body: fs.readFileSync(svg), type: "image/svg+xml" };
   return undefined;
 }
 
 export function removeCoverFiles(id: number) {
-  const { png, svg } = coverPaths(id);
+  const { png, jpg, webp, svg } = coverPaths(id);
   fs.rmSync(png, { force: true });
+  fs.rmSync(jpg, { force: true });
+  fs.rmSync(webp, { force: true });
   fs.rmSync(svg, { force: true });
+}
+
+const COVER_UPLOAD_MAX = 4 * 1024 * 1024;
+
+/** 管理员上传自定义封面（png / jpeg / webp）。 */
+export function saveUploadedCover(id: number, bytes: Buffer, mime: string) {
+  if (!Number.isInteger(id) || id <= 0) throw new Error("作品无效");
+  if (bytes.length === 0) throw new Error("图片是空的");
+  if (bytes.length > COVER_UPLOAD_MAX) throw new Error("封面请控制在 4MB 以内");
+
+  const type = mime.toLowerCase();
+  let ext: "png" | "jpg" | "webp";
+  if (type === "image/png" || type === "image/x-png") ext = "png";
+  else if (type === "image/jpeg" || type === "image/jpg") ext = "jpg";
+  else if (type === "image/webp") ext = "webp";
+  else throw new Error("封面仅支持 PNG / JPG / WEBP");
+
+  const paths = coverPaths(id);
+  fs.mkdirSync(paths.dir, { recursive: true });
+  removeCoverFiles(id);
+  const target = ext === "png" ? paths.png : ext === "jpg" ? paths.jpg : paths.webp;
+  fs.writeFileSync(target, bytes);
+  return { type: ext === "png" ? "image/png" : ext === "jpg" ? "image/jpeg" : "image/webp" };
 }

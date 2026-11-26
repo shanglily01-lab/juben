@@ -9,7 +9,7 @@ import { INVITEE_COINS, INVITER_COINS, SIGNUP_COINS, checkinReward } from "@/lib
 import { splitEpisodes } from "@/lib/episodes";
 import { BUYOUT_COINS, BUYOUT_YUAN } from "@/lib/pricing";
 import { nowIso, previousDay, shanghaiToday } from "@/lib/format";
-import { hashPassword } from "@/lib/password";
+import { hashPassword, verifyPassword } from "@/lib/password";
 import { dataDir } from "@/lib/paths";
 import { seedIfEmpty } from "@/lib/seed";
 import type { Kind, PublicWork, Review } from "@/lib/types";
@@ -105,7 +105,7 @@ type CheckinRow = {
 };
 
 const globalDb = globalThis as unknown as { __moben?: DatabaseSync; __mobenSchema?: number };
-const SCHEMA = 17;
+const SCHEMA = 18;
 const ACTIVATION_MS = 24 * 60 * 60 * 1000;
 const RESEND_MS = 60 * 1000;
 
@@ -330,8 +330,8 @@ function migrate(db: DatabaseSync) {
     WHERE status = 'pending';
   `);
 
-  // SCHEMA 17：开放 API 上传挂主账号「大黄书」，不再每次启动清掉该账号稿件。
-  ensureMainAuthor(db);
+  // SCHEMA 17+：主账号「大黄书」= 管理员；启动时按 MAIN_AUTHOR_PASSWORD 同步可登录密码。
+  ensureMainAuthor(db, { syncPassword: true });
 }
 
 function freshInviteCode(db: DatabaseSync) {
@@ -343,9 +343,13 @@ function freshInviteCode(db: DatabaseSync) {
   throw new Error("邀请码没有生成成功");
 }
 
-/** 确保站内主账号存在（开放上传 API 默认作者）。 */
-export function ensureMainAuthor(db: DatabaseSync = getDb()) {
+/** 确保站内主账号存在（开放上传默认作者 = 管理员）。 */
+export function ensureMainAuthor(
+  db: DatabaseSync = getDb(),
+  options: { syncPassword?: boolean } = {},
+) {
   const now = nowIso();
+  const envPassword = process.env.MAIN_AUTHOR_PASSWORD?.trim();
   const existing = db
     .prepare("SELECT id, username FROM users WHERE email = ?")
     .get(MAIN_AUTHOR_EMAIL) as { id: number; username: string } | undefined;
@@ -356,6 +360,18 @@ export function ensureMainAuthor(db: DatabaseSync = getDb()) {
     db.prepare(
       "UPDATE users SET email_verified_at = COALESCE(email_verified_at, ?) WHERE id = ?",
     ).run(now, existing.id);
+    // 仅启动迁移时同步密码，避免每次上传都跑 scrypt。
+    if (options.syncPassword && envPassword && envPassword.length >= 8) {
+      const row = db.prepare("SELECT password_hash FROM users WHERE id = ?").get(existing.id) as
+        | { password_hash: string }
+        | undefined;
+      if (!row || !verifyPassword(envPassword, row.password_hash)) {
+        db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(
+          hashPassword(envPassword),
+          existing.id,
+        );
+      }
+    }
     return existing.id;
   }
 
@@ -363,7 +379,9 @@ export function ensureMainAuthor(db: DatabaseSync = getDb()) {
     .prepare("SELECT id FROM users WHERE username = ?")
     .get(MAIN_AUTHOR_USERNAME) as { id: number } | undefined;
   const username = nameTaken ? `大黄书主站` : MAIN_AUTHOR_USERNAME;
-  const passwordHash = hashPassword(randomBytes(24).toString("hex"));
+  const passwordHash = hashPassword(
+    envPassword && envPassword.length >= 8 ? envPassword : randomBytes(24).toString("hex"),
+  );
   const info = db
     .prepare(
       `INSERT INTO users (username, email, password_hash, coins, created_at, email_verified_at, invite_code)
@@ -378,6 +396,10 @@ export function getMainAuthor() {
   const user = findUserById(id);
   if (!user) throw new Error("主账号未就绪");
   return { id: user.id, username: user.username };
+}
+
+export function isMainAuthorEmail(email: string | null | undefined) {
+  return Boolean(email && email.toLowerCase() === MAIN_AUTHOR_EMAIL);
 }
 
 function backfillInviteCodes(db: DatabaseSync) {
@@ -623,6 +645,58 @@ export function listByAuthor(authorId: number) {
     `${WORK_CARD} WHERE w.author_id = ? ORDER BY w.created_at DESC`,
     authorId,
   ).map(toPublic);
+}
+
+/** 站长后台：全部稿件（含未上架），按时间倒序。 */
+export function listOpsWorks(filter: { q?: string; status?: string; limit?: number } = {}) {
+  const where: string[] = ["1=1"];
+  const params: unknown[] = [];
+  if (filter.status === "published" || filter.status === "pending" || filter.status === "rejected") {
+    where.push("w.status = ?");
+    params.push(filter.status);
+  }
+  const q = filter.q?.trim();
+  if (q) {
+    where.push(
+      "(w.title LIKE ? ESCAPE '\\' OR w.summary LIKE ? ESCAPE '\\' OR u.username LIKE ? ESCAPE '\\')",
+    );
+    const pattern = `%${q.replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
+    params.push(pattern, pattern, pattern);
+  }
+  const limit = Math.min(Math.max(filter.limit ?? 80, 1), 200);
+  return many<WorkRow>(
+    `${WORK_CARD} WHERE ${where.join(" AND ")} ORDER BY w.created_at DESC, w.id DESC LIMIT ${limit}`,
+    ...params,
+  ).map(toPublic);
+}
+
+export function updateWorkReview(
+  workId: number,
+  input: {
+    review: Review;
+    status: "published" | "rejected" | "pending";
+    price?: number;
+  },
+) {
+  const work = getWorkDetail(workId);
+  if (!work) return { ok: false as const, error: "找不到这篇" };
+  const price = input.price == null ? work.price : input.price > 0 ? 1 : 0;
+  getDb()
+    .prepare(
+      `UPDATE works
+       SET status = ?, score = ?, grade = ?, review_json = ?, review_source = ?, price = ?
+       WHERE id = ?`,
+    )
+    .run(
+      input.status,
+      input.review.score,
+      input.review.grade,
+      JSON.stringify(input.review),
+      input.review.source,
+      price,
+      workId,
+    );
+  return { ok: true as const };
 }
 
 /** 仅作者可删未过审稿；已上架不可删。 */

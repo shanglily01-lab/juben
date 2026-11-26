@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { DeleteRejectedWorkForm } from "@/components/DeleteRejectedWorkForm";
 import { logoutAction } from "@/lib/actions";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isAdminUser } from "@/lib/auth";
 import { categoryName } from "@/lib/categories";
 import { CHECKIN_REWARDS, INVITER_COINS } from "@/lib/coins";
 import { getCheckinState, listByAuthor, listRequirementsByUser, listUnlocked } from "@/lib/db";
@@ -16,6 +16,7 @@ export const metadata: Metadata = { title: "我的" };
 export default async function MinePage({ searchParams }: { searchParams: Promise<{ activated?: string }> }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/mine");
+  const admin = isAdminUser(user);
   const params = await searchParams;
   const mine = listByAuthor(user.id);
   const unlocked = listUnlocked(user.id);
@@ -101,6 +102,20 @@ export default async function MinePage({ searchParams }: { searchParams: Promise
             ›
           </span>
         </a>
+        {admin ? (
+          <a className="mine-menu-row" href="/ops/works">
+            <span className="mine-menu-ico upload" aria-hidden>
+              管
+            </span>
+            <span className="mine-menu-body">
+              <strong>稿件管理</strong>
+              <small>换封面、复审、上下架</small>
+            </span>
+            <span className="mine-menu-chev" aria-hidden>
+              ›
+            </span>
+          </a>
+        ) : null}
         <a className="mine-menu-row" href="/upload">
           <span className="mine-menu-ico upload" aria-hidden>
             投

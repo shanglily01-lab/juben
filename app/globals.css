@@ -1801,6 +1801,66 @@ body:has(.app-paying) {
 }
 .pack.is-busy { opacity: 0.72; }
 
+.admin-panel {
+  margin: 18px 0 8px;
+  padding: 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--surface-container);
+}
+.admin-panel .section-title { margin-bottom: 6px; }
+.admin-form {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.admin-form:first-of-type {
+  margin-top: 10px;
+  padding-top: 0;
+  border-top: 0;
+}
+.ops-work-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.ops-work-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: inherit;
+  text-decoration: none;
+}
+.ops-work-row img {
+  width: 48px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 6px;
+  background: var(--surface-container);
+  flex-shrink: 0;
+}
+.ops-work-body {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  gap: 4px;
+}
+.ops-work-body strong {
+  font-size: 15px;
+  line-height: 1.35;
+}
+.ops-work-body small {
+  color: var(--ink-soft);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 @media (min-width: 880px) {
   .pay-wait-dock {
     position: static;

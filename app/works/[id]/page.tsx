@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
+import { AdminWorkPanel } from "@/components/AdminWorkPanel";
 import { DeleteRejectedWorkForm } from "@/components/DeleteRejectedWorkForm";
 import { WorkDiscussionForm } from "@/components/DiscussionForm";
 import { DiscussionList } from "@/components/DiscussionList";
@@ -9,7 +10,7 @@ import { NoCopy } from "@/components/NoCopy";
 import { Reader } from "@/components/Reader";
 import { ReviewCard } from "@/components/ReviewCard";
 import { WorkPurchase } from "@/components/WorkPurchase";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isAdminUser } from "@/lib/auth";
 import { categoryName } from "@/lib/categories";
 import {
   countDiscussionsByWork,
@@ -28,7 +29,12 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   const work = getWorkDetail(Number(id));
   const user = await getCurrentUser();
-  if (!work || (work.status !== "published" && user?.id !== work.author_id)) return { title: "未找到" };
+  if (
+    !work ||
+    (work.status !== "published" && user?.id !== work.author_id && !isAdminUser(user))
+  ) {
+    return { title: "未找到" };
+  }
   return { title: work.title, description: work.summary };
 }
 
@@ -46,7 +52,8 @@ export default async function WorkPage({
   const user = await getCurrentUser();
   if (!work) notFound();
   const isAuthor = user?.id === work.author_id;
-  if (work.status !== "published" && !isAuthor) notFound();
+  const isAdmin = isAdminUser(user);
+  if (work.status !== "published" && !isAuthor && !isAdmin) notFound();
   if (work.status === "published") recordWorkView(work.id);
 
   const exclusiveOwnerId = getWorkBuyoutUserId(work.id);
@@ -156,8 +163,18 @@ export default async function WorkPage({
             ) : null}
           </div>
         </header>
-        {review && work.status !== "pending" && (canRead || !buyoutTaken) ? (
+        {review && work.status !== "pending" && (canRead || !buyoutTaken || isAdmin) ? (
           <ReviewCard review={review} rejected={work.status === "rejected"} />
+        ) : null}
+        {isAdmin ? (
+          <AdminWorkPanel
+            workId={work.id}
+            title={work.title}
+            score={work.score}
+            status={work.status}
+            price={work.price}
+            summary={review?.summary || work.summary}
+          />
         ) : null}
         <div className="work-main">
           {buyoutTaken && !canRead ? (

@@ -21,7 +21,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   return new Response(new Uint8Array(cover.body), {
     headers: {
       "Content-Type": cover.type,
-      "Cache-Control": "public, max-age=3600",
+      "Cache-Control": "public, max-age=60, must-revalidate",
     },
   });
 }
