@@ -1,159 +1,149 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
- * 站内中转：跳上游支付。付完常见两种回法——
- * 1) 上游同步打开 returnUrl
- * 2) 微信/支付宝关掉后 bfcache 回到本页（useEffect 不重跑）
- * 所以必须用 pageshow/visibility + 轮询查单，不能只靠挂载时跳一次。
+ * 上游收银台（如 143.x:9557/store/pay）付完经常不回跳。
+ * 因此本页绝不自动 location 跳走：在本站等待 + 新窗口打开支付 + 轮询到账。
  */
 export function PayGoClient({
   orderNo,
   payUrl,
-  returnHref,
   walletHref,
 }: {
   orderNo: string;
   payUrl: string;
-  returnHref: string;
+  returnHref?: string;
   walletHref: string;
 }) {
-  const [left, setLeft] = useState(false);
-  const [hint, setHint] = useState("马上跳转到微信 / 支付宝，请勿关闭本站。");
-  const leftKey = `payLeft:${orderNo}`;
+  const [statusText, setStatusText] = useState("等待打开支付…");
+  const [paid, setPaid] = useState(false);
+  const [opened, setOpened] = useState(false);
+  const triesRef = useRef(0);
 
   useEffect(() => {
-    if (!payUrl || !orderNo) return;
+    if (!orderNo) return;
+    try {
+      sessionStorage.setItem("pendingTopup", orderNo);
+      sessionStorage.setItem(`payLeft:${orderNo}`, "1");
+      // 下单页若已 window.open，这里标记已打开
+      if (sessionStorage.getItem(`payUrl:${orderNo}`)) setOpened(true);
+    } catch {
+      /* ignore */
+    }
 
     let stopped = false;
-    let pollTimer = 0;
-    let launchTimer = 0;
+    let timer = 0;
 
-    const markLeft = () => {
-      try {
-        sessionStorage.setItem(leftKey, "1");
-        sessionStorage.setItem("pendingTopup", orderNo);
-      } catch {
-        /* ignore */
-      }
-      setLeft(true);
-    };
-
-    const alreadyLeft = () => {
-      try {
-        return sessionStorage.getItem(leftKey) === "1";
-      } catch {
-        return false;
-      }
-    };
-
-    const goResult = () => {
-      if (stopped) return;
-      // 中转页已在本域，用相对路径进结果页最稳
-      window.location.replace(`/pay/r/${encodeURIComponent(orderNo)}`);
-    };
-
-    const goWalletOk = () => {
-      if (stopped) return;
+    const clearPending = () => {
       try {
         sessionStorage.removeItem("pendingTopup");
-        sessionStorage.removeItem(leftKey);
+        sessionStorage.removeItem(`payLeft:${orderNo}`);
       } catch {
         /* ignore */
       }
-      window.location.replace("/wallet?ok=1");
     };
 
-    const pollOnce = async () => {
+    const poll = async () => {
+      if (stopped) return;
+      triesRef.current += 1;
       try {
         const response = await fetch(`/api/pay/query?orderNo=${encodeURIComponent(orderNo)}`, {
           cache: "no-store",
           credentials: "same-origin",
         });
-        if (response.status === 401) return;
+        if (response.status === 401) {
+          setStatusText("登录已失效，请重新登录");
+          return;
+        }
         const data = (await response.json()) as { order?: { payStatus?: string } };
         const status = String(data.order?.payStatus || "").toUpperCase();
         if (status === "SUCCESS") {
-          setHint("充值成功，正在返回钱包…");
-          goWalletOk();
-          return true;
+          setPaid(true);
+          setStatusText("充值成功，正在返回钱包…");
+          clearPending();
+          window.location.replace("/wallet?ok=1");
+          return;
         }
+        if (["FAIL", "TIMEOUT", "EXCEPTION", "CLOSE"].includes(status)) {
+          setStatusText("支付未完成，可重新打开支付或返回钱包换档位。");
+          return;
+        }
+        setStatusText(
+          opened
+            ? `等待支付结果中…（已查询 ${triesRef.current} 次，付完请回到本页）`
+            : "请先点下方按钮打开支付页",
+        );
       } catch {
-        /* keep polling */
+        setStatusText("查单暂时失败，稍后自动重试…");
       }
-      return false;
+      if (!stopped) timer = window.setTimeout(poll, 1500);
     };
 
-    const startPolling = () => {
-      const tick = async () => {
-        if (stopped) return;
-        const done = await pollOnce();
-        if (!done && !stopped) pollTimer = window.setTimeout(tick, 1200);
-      };
-      void tick();
-    };
-
-    // 从支付页返回（含 bfcache）：立刻去结果页，同时本页也继续轮询
-    const onBack = () => {
-      if (!alreadyLeft()) return;
-      if (document.visibilityState && document.visibilityState !== "visible") return;
-      setHint("已从支付页返回，正在确认结果…");
-      setLeft(true);
-      void pollOnce().then((ok) => {
-        if (!ok) goResult();
-      });
-    };
-
-    window.addEventListener("pageshow", onBack);
-    document.addEventListener("visibilitychange", onBack);
-
-    if (alreadyLeft()) {
-      // 再次打开中转页：不要重开支付，查单或去结果页
-      setLeft(true);
-      setHint("正在确认支付结果…");
-      startPolling();
-      void pollOnce().then((ok) => {
-        if (!ok) goResult();
-      });
-    } else {
-      try {
-        sessionStorage.setItem("pendingTopup", orderNo);
-      } catch {
-        /* ignore */
-      }
-      launchTimer = window.setTimeout(() => {
-        markLeft();
-        setHint("付完后应自动回站。若停在支付页，请点「完成」或返回；也可点下方查看结果。");
-        startPolling();
-        window.location.assign(payUrl);
-      }, 350);
-    }
-
+    void poll();
     return () => {
       stopped = true;
-      window.clearTimeout(launchTimer);
-      window.clearTimeout(pollTimer);
-      window.removeEventListener("pageshow", onBack);
-      document.removeEventListener("visibilitychange", onBack);
+      window.clearTimeout(timer);
     };
-  }, [orderNo, payUrl, returnHref, leftKey]);
+  }, [orderNo, opened]);
+
+  const openPay = () => {
+    if (!payUrl) return;
+    setOpened(true);
+    setStatusText("已打开支付页。请在支付页完成付款，然后回到本页，勿停在支付平台。");
+    // 新窗口：本页继续轮询。被拦截时退回同页打开。
+    const win = window.open(payUrl, "_blank", "noopener,noreferrer");
+    if (!win) {
+      window.location.href = payUrl;
+    }
+  };
+
+  const checkNow = async () => {
+    setStatusText("正在确认支付结果…");
+    try {
+      const response = await fetch(`/api/pay/query?orderNo=${encodeURIComponent(orderNo)}`, {
+        cache: "no-store",
+        credentials: "same-origin",
+      });
+      const data = (await response.json()) as { order?: { payStatus?: string } };
+      const status = String(data.order?.payStatus || "").toUpperCase();
+      if (status === "SUCCESS") {
+        setPaid(true);
+        setStatusText("充值成功，正在返回钱包…");
+        try {
+          sessionStorage.removeItem("pendingTopup");
+          sessionStorage.removeItem(`payLeft:${orderNo}`);
+        } catch {
+          /* ignore */
+        }
+        window.location.replace("/wallet?ok=1");
+        return;
+      }
+      setStatusText("尚未到账。若已付款，请稍等几秒再点「我已完成支付」。");
+    } catch {
+      setStatusText("确认失败，请稍后重试。");
+    }
+  };
 
   return (
     <div className="wrap page">
       <p className="kicker">支付</p>
-      <h1>{left ? "请完成付款" : "正在打开支付…"}</h1>
-      <p className="intro">{hint}</p>
+      <h1>{paid ? "充值成功" : "请在支付页完成付款"}</h1>
+      <p className="intro">{statusText}</p>
+      <p className="hint" style={{ marginTop: 8 }}>
+        说明：第三方支付页（收银台）付完后通常不会自动跳回。请付完后回到本页，点「我已完成支付」。
+      </p>
       <div className="stack" style={{ marginTop: 18 }}>
-        <a className="btn solid" href={`/pay/r/${encodeURIComponent(orderNo)}`}>
+        <button className="btn solid" type="button" onClick={openPay}>
+          {opened ? "重新打开支付页" : "打开支付页"}
+        </button>
+        <button className="btn solid" type="button" onClick={() => void checkNow()}>
+          我已完成支付
+        </button>
+        <a className="btn ghost" href={`/pay/r/${encodeURIComponent(orderNo)}`}>
           查看支付结果
         </a>
-        {payUrl ? (
-          <a className="btn ghost" href={payUrl}>
-            重新打开支付页
-          </a>
-        ) : null}
-        <a className="btn ghost" href={walletHref.startsWith("http") ? walletHref : "/wallet"}>
+        <a className="btn ghost" href={walletHref.startsWith("http") ? "/wallet" : walletHref}>
           返回钱包
         </a>
       </div>

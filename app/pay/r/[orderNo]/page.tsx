@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { PayResultClient } from "@/components/PayResultClient";
 import { getCurrentUser } from "@/lib/auth";
-import { findPayOrder } from "@/lib/db";
+import { findPayOrderByAny } from "@/lib/db";
 import { payOrigin } from "@/lib/origin";
 import { fulfillPayOrder } from "@/lib/pay-fulfill";
 import { payConfigured, queryUpstreamPayment } from "@/lib/pay";
@@ -67,7 +67,7 @@ export default async function PayResultPathPage({
     );
   }
 
-  const local = findPayOrder(orderNo);
+  const local = findPayOrderByAny(orderNo);
   if (!local || local.user_id !== user.id) {
     return (
       <div className="wrap page">
@@ -87,14 +87,15 @@ export default async function PayResultPathPage({
     redirect("/wallet?ok=1");
   }
 
-  const paid = await tryFulfillQuick(orderNo);
+  const mchOrderNo = local.mch_order_no;
+  const paid = await tryFulfillQuick(mchOrderNo);
   if (paid) {
     redirect("/wallet?ok=1");
   }
 
   return (
     <PayResultClient
-      orderNo={orderNo}
+      orderNo={mchOrderNo}
       walletOkUrl={walletOkUrl}
       walletUrl={walletUrl}
       loginUrl={loginUrl}

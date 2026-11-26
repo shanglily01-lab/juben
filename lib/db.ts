@@ -1065,6 +1065,19 @@ export function findPayOrder(mchOrderNo: string) {
   return one<PayOrderRow>("SELECT * FROM pay_orders WHERE mch_order_no = ?", mchOrderNo);
 }
 
+/** 上游收银台 order_sn（serial）反查本站订单。 */
+export function findPayOrderBySerial(serialOrderNo: string) {
+  const serial = serialOrderNo.trim();
+  if (!serial) return null;
+  return one<PayOrderRow>("SELECT * FROM pay_orders WHERE serial_order_no = ? ORDER BY id DESC LIMIT 1", serial);
+}
+
+export function findPayOrderByAny(ref: string) {
+  const key = ref.trim();
+  if (!key) return null;
+  return findPayOrder(key) || findPayOrderBySerial(key);
+}
+
 export function markPayOrderPaid(mchOrderNo: string, serialOrderNo?: string) {
   const now = nowIso();
   return txn((db) => {
