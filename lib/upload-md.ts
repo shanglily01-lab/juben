@@ -24,15 +24,21 @@ export type UploadMdErr = {
   code?: "unauthorized" | "limit" | "too_short" | "too_long" | "empty" | "save_failed";
 };
 
+export type PublishMarkdownOptions = {
+  /** API Token 批量上架时跳过每人 50 篇 */
+  bypassAuthorLimit?: boolean;
+};
+
 /** 登录用户投稿 Markdown 正文：校验 → 抽元数据 → 上架 → 封面。 */
 export async function publishMarkdownForUser(
   user: { id: number },
   rawContent: string,
+  options: PublishMarkdownOptions = {},
 ): Promise<UploadMdOk | UploadMdErr> {
   const content = String(rawContent || "").replace(/\r\n/g, "\n").trim();
   if (!content) return { ok: false, error: "正文不能为空", code: "empty" };
 
-  if (countWorksByAuthor(user.id) >= UPLOAD_MD_MAX_WORKS) {
+  if (!options.bypassAuthorLimit && countWorksByAuthor(user.id) >= UPLOAD_MD_MAX_WORKS) {
     return { ok: false, error: `每人最多保存 ${UPLOAD_MD_MAX_WORKS} 篇稿件`, code: "limit" };
   }
 
@@ -69,6 +75,7 @@ export async function publishMarkdownForUser(
       review,
       wordCount: words,
       status: "published",
+      bypassAuthorLimit: options.bypassAuthorLimit,
     });
   } catch (error) {
     if (error instanceof WorkLimitError) {

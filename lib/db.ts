@@ -648,13 +648,17 @@ export function insertWork(input: {
   wordCount: number;
   /** pending=先入库待审；默认按审核结果上架或拒稿 */
   status?: "published" | "rejected" | "pending";
+  /** API 批量上架时跳过每人 50 篇限制 */
+  bypassAuthorLimit?: boolean;
 }) {
   const now = nowIso();
   return txn((db) => {
-    const count = db.prepare("SELECT COUNT(*) AS c FROM works WHERE author_id = ?").get(input.authorId) as {
-      c: number;
-    };
-    if (count.c >= 50) throw new WorkLimitError();
+    if (!input.bypassAuthorLimit) {
+      const count = db.prepare("SELECT COUNT(*) AS c FROM works WHERE author_id = ?").get(input.authorId) as {
+        c: number;
+      };
+      if (count.c >= 50) throw new WorkLimitError();
+    }
     const episodeCount = Math.max(1, splitEpisodes(input.content).length);
     const status =
       input.status || (input.review.decision === "approve" ? "published" : "rejected");
