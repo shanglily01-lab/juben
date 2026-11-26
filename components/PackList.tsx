@@ -56,14 +56,17 @@ export function PackList() {
                       setPendingId("");
                       return;
                     }
-                    // 先进入本站等待页；支付在新窗口打开（上游收银台通常不回跳）
+                    // 先进本站等待页；手机勿抢先 window.open（易丢回跳），由等待页再打开
                     try {
                       sessionStorage.setItem("pendingTopup", data.mchOrderNo);
                       if (data.payUrl) sessionStorage.setItem(`payUrl:${data.mchOrderNo}`, data.payUrl);
                     } catch {
                       /* ignore */
                     }
-                    if (data.payUrl) {
+                    const desktop =
+                      typeof window !== "undefined" &&
+                      window.matchMedia("(min-width: 881px) and (hover: hover)").matches;
+                    if (desktop && data.payUrl) {
                       window.open(data.payUrl, "_blank", "noopener,noreferrer");
                     }
                     location.href = `/pay/go?orderNo=${encodeURIComponent(data.mchOrderNo)}`;

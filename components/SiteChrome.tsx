@@ -16,11 +16,13 @@ export function SiteChrome({ user, children }: { user: ChromeUser; children: Rea
     path.startsWith("/wallet") ||
     path.startsWith("/invite") ||
     path.startsWith("/checkin");
+  const paying = path.startsWith("/pay");
+  const home = path === "/";
   const uploadHref = user ? "/upload" : "/login?next=/upload";
   const mineHref = user ? "/mine" : "/login?next=/mine";
 
   return (
-    <div className="app">
+    <div className={`app${paying ? " app-paying" : ""}${home ? " app-home" : ""}`}>
       <a className="skip" href="#main">
         跳到正文
       </a>
@@ -53,13 +55,13 @@ export function SiteChrome({ user, children }: { user: ChromeUser; children: Rea
           </a>
         </nav>
         <div className="head-actions">
-          <a className="icon-link mobile-search" href="/browse">
+          <a className="icon-link mobile-search" href="/browse" aria-label="搜索短剧">
             搜索
           </a>
           {user ? (
             <a className="coin-pill" href="/wallet" aria-label={`金币 ${user.coins}，去充值`}>
               <span className="dot" />
-              {user.coins}
+              <span className="coin-pill-num">{user.coins}</span>
             </a>
           ) : (
             <span className="text-btn auth-combo">
@@ -78,20 +80,34 @@ export function SiteChrome({ user, children }: { user: ChromeUser; children: Rea
       </header>
       <main id="main">{children}</main>
       <footer className="foot">大黄书 · 短剧剧本 · 同一套账号</footer>
-      <nav className="tabbar" aria-label="底部导航">
-        <a className="tab" href="/browse" aria-current={scripts ? "page" : undefined}>
-          短剧
-        </a>
-        <a className="tab" href="/hot" aria-current={ranks ? "page" : undefined}>
-          榜单
-        </a>
-        <a className="tab" href="/community" aria-current={community ? "page" : undefined}>
-          社区
-        </a>
-        <a className="tab" href={mineHref} aria-current={mine ? "page" : undefined}>
-          我的
-        </a>
-      </nav>
+      {!paying ? (
+        <nav className="tabbar" aria-label="底部导航">
+          <a className="tab" href="/browse" aria-current={scripts ? "page" : undefined}>
+            <span className="tab-ico" aria-hidden>
+              剧
+            </span>
+            <span className="tab-label">短剧</span>
+          </a>
+          <a className="tab" href="/hot" aria-current={ranks ? "page" : undefined}>
+            <span className="tab-ico" aria-hidden>
+              榜
+            </span>
+            <span className="tab-label">榜单</span>
+          </a>
+          <a className="tab" href="/community" aria-current={community ? "page" : undefined}>
+            <span className="tab-ico" aria-hidden>
+              社
+            </span>
+            <span className="tab-label">社区</span>
+          </a>
+          <a className="tab" href={mineHref} aria-current={mine ? "page" : undefined}>
+            <span className="tab-ico" aria-hidden>
+              我
+            </span>
+            <span className="tab-label">我的</span>
+          </a>
+        </nav>
+      ) : null}
     </div>
   );
 }

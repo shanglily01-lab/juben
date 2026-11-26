@@ -93,12 +93,5 @@ export default async function PayResultPathPage({
     redirect("/wallet?ok=1");
   }
 
-  return (
-    <PayResultClient
-      orderNo={mchOrderNo}
-      walletOkUrl={walletOkUrl}
-      walletUrl={walletUrl}
-      loginUrl={loginUrl}
-    />
-  );
+  return <PayResultClient orderNo={mchOrderNo} loginUrl={loginUrl} />;
 }

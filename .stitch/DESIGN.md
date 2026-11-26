@@ -21,3 +21,8 @@ Asset: assets/9708645926523801275
 - Browse: screens/dc20e74e2b754fa39cf1fe87343753cf
 - Login: screens/d852f09593ba44c79e725ab3c6bbfa3d
 - Pay success: screens/f0ac62b3cb2f49beaf87771ff3a35ffa
+
+## Mobile sync (local)
+- max-width 879px: tighter wrap/topbar, hero CTAs full-width row, pack cards, tab icons
+- `/pay/*` hides tabbar; sticky pay-wait dock (打开支付 / 我已完成支付)
+- Phone pay: same-tab open cashier; return via system back + poll

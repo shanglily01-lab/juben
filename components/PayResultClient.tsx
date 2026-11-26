@@ -2,19 +2,14 @@
 
 import { useEffect, useState } from "react";
 
-/**
- * 支付回跳结果：客户端轮询查单，成功后用相对路径整页跳钱包。
- * 绝对域在部分支付 WebView 里会跳不走，表现为「付完卡住不动」。
- */
+/** 支付结果页：轮询到账后相对路径回钱包。 */
 export function PayResultClient({
   orderNo,
-  walletOkUrl,
-  walletUrl,
   loginUrl,
 }: {
   orderNo: string;
-  walletOkUrl: string;
-  walletUrl: string;
+  walletOkUrl?: string;
+  walletUrl?: string;
   loginUrl: string;
 }) {
   const [text, setText] = useState("正在确认支付结果…");
@@ -36,24 +31,11 @@ export function PayResultClient({
     let tries = 0;
 
     const jump = (path: string) => {
-      // 相对路径最稳；绝对地址作兜底
       try {
         window.location.replace(path);
       } catch {
         window.location.href = path;
       }
-    };
-
-    const goWallet = (ok: boolean) => {
-      try {
-        if (ok) {
-          sessionStorage.removeItem("pendingTopup");
-          sessionStorage.removeItem(`payLeft:${orderNo}`);
-        }
-      } catch {
-        /* ignore */
-      }
-      jump(ok ? "/wallet?ok=1" : "/wallet");
     };
 
     const tick = async () => {
@@ -68,15 +50,18 @@ export function PayResultClient({
           jump(loginUrl.startsWith("http") ? loginUrl : `/login?next=${encodeURIComponent(`/pay/r/${orderNo}`)}`);
           return;
         }
-        const data = (await response.json()) as {
-          ok?: boolean;
-          order?: { payStatus?: string };
-        };
+        const data = (await response.json()) as { order?: { payStatus?: string } };
         const status = String(data.order?.payStatus || "").toUpperCase();
         if (status === "SUCCESS") {
           setText("充值成功，正在返回钱包…");
           setDone("ok");
-          goWallet(true);
+          try {
+            sessionStorage.removeItem("pendingTopup");
+            sessionStorage.removeItem(`payLeft:${orderNo}`);
+          } catch {
+            /* ignore */
+          }
+          jump("/wallet?ok=1");
           return;
         }
         if (["FAIL", "TIMEOUT", "EXCEPTION", "CLOSE"].includes(status)) {
@@ -85,14 +70,13 @@ export function PayResultClient({
           return;
         }
         setDone("wait");
-        setText(tries > 3 ? `正在确认支付结果…（第 ${tries} 次）` : "正在确认支付结果…");
+        setText(tries > 2 ? `正在确认…（第 ${tries} 次）` : "正在确认支付结果…");
       } catch {
-        /* keep polling */
+        /* keep */
       }
-      if (!stopped && tries < 50) {
-        window.setTimeout(tick, 1000);
-      } else if (!stopped) {
-        setText("仍在等待支付结果，可点「打开钱包」查看是否已到账。");
+      if (!stopped && tries < 50) window.setTimeout(tick, 1000);
+      else if (!stopped) {
+        setText("仍在等待结果，可打开钱包查看是否已到账。");
         setDone("wait");
       }
     };
@@ -101,14 +85,16 @@ export function PayResultClient({
     return () => {
       stopped = true;
     };
-  }, [orderNo, walletOkUrl, walletUrl, loginUrl]);
+  }, [orderNo, loginUrl]);
 
   return (
-    <div className="wrap page">
-      <p className="kicker">支付回跳</p>
-      <h1>{done === "ok" ? "充值成功" : done === "fail" ? "支付未完成" : "支付结果"}</h1>
-      <p className="intro">{text}</p>
-      <p className="stack" style={{ marginTop: 16 }}>
+    <div className="wrap page pay-wait-page">
+      <section className="pay-wait-card">
+        <p className="kicker">支付回跳</p>
+        <h1>{done === "ok" ? "充值成功" : done === "fail" ? "支付未完成" : "支付结果"}</h1>
+        <p className="intro">{text}</p>
+      </section>
+      <div className="pay-wait-dock">
         <a className="btn solid" href={done === "ok" ? "/wallet?ok=1" : "/wallet"}>
           {done === "ok" ? "返回钱包" : "打开钱包"}
         </a>
@@ -117,7 +103,7 @@ export function PayResultClient({
             刷新结果
           </button>
         ) : null}
-      </p>
+      </div>
     </div>
   );
 }
