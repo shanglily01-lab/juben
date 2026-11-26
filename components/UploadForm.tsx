@@ -5,7 +5,7 @@ import { useActionState, useState, type ChangeEvent } from "react";
 import { uploadAction } from "@/lib/actions";
 import { SubmitButton } from "@/components/SubmitButton";
 import { countWords } from "@/lib/format";
-import type { ActionState } from "@/lib/types";
+import type { ActionState, Kind } from "@/lib/types";
 
 const initial: ActionState = { error: "" };
 
@@ -14,6 +14,7 @@ export function UploadForm() {
   const [content, setContent] = useState("");
   const [fileName, setFileName] = useState("");
   const [fileError, setFileError] = useState("");
+  const [kind, setKind] = useState<Kind>("script");
 
   async function onFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -38,13 +39,43 @@ export function UploadForm() {
 
   return (
     <form className="form" action={formAction}>
+      <fieldset className="kind-picker">
+        <legend>体裁</legend>
+        <label className={`kind-option${kind === "script" ? " on" : ""}`}>
+          <input
+            type="radio"
+            name="kind"
+            value="script"
+            checked={kind === "script"}
+            onChange={() => setKind("script")}
+          />
+          <strong>短剧剧本</strong>
+          <span>分场、对白、△动作</span>
+        </label>
+        <label className={`kind-option${kind === "novel" ? " on" : ""}`}>
+          <input
+            type="radio"
+            name="kind"
+            value="novel"
+            checked={kind === "novel"}
+            onChange={() => setKind("novel")}
+          />
+          <strong>小说</strong>
+          <span>章节叙事、小说正文</span>
+        </label>
+      </fieldset>
+
       <div className="field">
-        <span>剧本文件（.md，≤5MB）</span>
+        <span>{kind === "novel" ? "小说文件" : "剧本文件"}（.md，≤5MB）</span>
         <label className="btn ghost file-btn">
           {fileName ? `已选：${fileName}` : "选择 .md 文件"}
           <input type="file" accept=".md,.markdown,text/markdown,text/plain" onChange={onFile} />
         </label>
-        <p className="hint">建议文件内用一级标题写剧名；也可不写，交给 AI 从正文识别。</p>
+        <p className="hint">
+          {kind === "novel"
+            ? "建议用一级标题写书名，正文按章节组织。"
+            : "建议文件内用一级标题写剧名；也可不写，交给 AI 从正文识别。"}
+        </p>
       </div>
 
       <label className="field">
@@ -54,7 +85,11 @@ export function UploadForm() {
           required
           value={content}
           onChange={(event) => setContent(event.target.value)}
-          placeholder={"选好文件后会显示在这里；也可以直接粘贴。\n\n示例：\n# 剧名\n\n第一场 …\n△动作\n角色：对白"}
+          placeholder={
+            kind === "novel"
+              ? "选好文件后会显示在这里；也可以直接粘贴。\n\n示例：\n# 书名\n\n第一章 …"
+              : "选好文件后会显示在这里；也可以直接粘贴。\n\n示例：\n# 剧名\n\n第一场 …\n△动作\n角色：对白"
+          }
         />
         <p className={`hint${tooShort || tooLong ? " upload-warn" : ""}`}>
           当前 {words} 字

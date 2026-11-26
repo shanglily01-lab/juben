@@ -127,7 +127,7 @@ export default async function WorkPage({
             ) : canDownload ? (
               <p className="work-actions">
                 <a className="btn solid" href={`/api/works/${work.id}/download`} download>
-                  下载完整剧本
+                  {work.kind === "novel" ? "下载完整小说" : "下载完整剧本"}
                 </a>
               </p>
             ) : null}
@@ -173,6 +173,7 @@ export default async function WorkPage({
             score={work.score}
             status={work.status}
             price={work.price}
+            kind={work.kind}
             summary={review?.summary || work.summary}
           />
         ) : null}

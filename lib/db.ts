@@ -105,7 +105,7 @@ type CheckinRow = {
 };
 
 const globalDb = globalThis as unknown as { __moben?: DatabaseSync; __mobenSchema?: number };
-const SCHEMA = 18;
+const SCHEMA = 19;
 const ACTIVATION_MS = 24 * 60 * 60 * 1000;
 const RESEND_MS = 60 * 1000;
 
@@ -305,14 +305,7 @@ function migrate(db: DatabaseSync) {
     CREATE INDEX IF NOT EXISTS idx_discussions_work ON discussions(work_id, id DESC);
     CREATE INDEX IF NOT EXISTS idx_discussions_recent ON discussions(id DESC);
   `);
-  // 下线全部小说：关联记录清掉后再删作品
-  db.exec(`
-    DELETE FROM discussions WHERE work_id IN (SELECT id FROM works WHERE kind = 'novel');
-    DELETE FROM unlocks WHERE work_id IN (SELECT id FROM works WHERE kind = 'novel');
-    UPDATE pay_orders SET work_id = NULL WHERE work_id IN (SELECT id FROM works WHERE kind = 'novel');
-    UPDATE requirements SET delivered_work_id = NULL WHERE delivered_work_id IN (SELECT id FROM works WHERE kind = 'novel');
-    DELETE FROM works WHERE kind = 'novel';
-  `);
+  // SCHEMA 19：重新开放小说；不再清掉 novel 稿件。
   db.exec("UPDATE users SET username = '大黄叔' WHERE username = '墨本编辑室'");
   const editorNameTaken = db
     .prepare("SELECT id FROM users WHERE username = '大黄书' AND email != 'editor@moben.local'")
@@ -539,11 +532,10 @@ export function registerUser(input: {
 export function listWorks(filter: { kind?: string; category?: string; q?: string; limit?: number }) {
   const where = ["w.status = 'published'"];
   const params: unknown[] = [];
-  if (filter.kind === "novel") {
-    return [];
+  if (filter.kind === "script" || filter.kind === "novel") {
+    where.push("w.kind = ?");
+    params.push(filter.kind);
   }
-  // 小说已下线，书库只出短剧
-  where.push("w.kind = 'script'");
   if (filter.category && isCategory(filter.category)) {
     where.push("w.category = ?");
     params.push(filter.category);
@@ -566,7 +558,7 @@ export function listWorks(filter: { kind?: string; category?: string; q?: string
 
 export function featuredWork() {
   const row = one<WorkRow>(
-    `${WORK_CARD} WHERE w.status = 'published' AND w.kind = 'script' ORDER BY w.score DESC, w.id DESC LIMIT 1`,
+    `${WORK_CARD} WHERE w.status = 'published' ORDER BY w.score DESC, w.id DESC LIMIT 1`,
   );
   return row ? toPublic(row) : undefined;
 }
@@ -582,7 +574,7 @@ export function recordWorkView(workId: number) {
 export function listHotWorks(limit = 10) {
   const size = Math.min(Math.max(limit, 1), 40);
   return many<WorkRow>(
-    `${WORK_CARD} WHERE w.status = 'published' AND w.kind = 'script'
+    `${WORK_CARD} WHERE w.status = 'published'
      ORDER BY COALESCE(w.read_count, 0) DESC, w.score DESC, w.id DESC
      LIMIT ${size}`,
   ).map(toPublic);
@@ -591,7 +583,7 @@ export function listHotWorks(limit = 10) {
 /** 阅读推荐：热度与评分加权。 */
 export function listRecommendedWorks(input?: { limit?: number; excludeId?: number; category?: string }) {
   const size = Math.min(Math.max(input?.limit ?? 8, 1), 24);
-  const where = ["w.status = 'published'", "w.kind = 'script'"];
+  const where = ["w.status = 'published'"];
   const params: unknown[] = [];
   if (input?.excludeId) {
     where.push("w.id != ?");
@@ -613,7 +605,7 @@ export function listRecommendedWorks(input?: { limit?: number; excludeId?: numbe
 export function listHotPurchaseWorks(limit = 10) {
   const size = Math.min(Math.max(limit, 1), 40);
   return many<WorkRow>(
-    `${WORK_CARD} WHERE w.status = 'published' AND w.kind = 'script'
+    `${WORK_CARD} WHERE w.status = 'published'
      ORDER BY COALESCE(w.purchase_count, 0) DESC, w.score DESC, w.id DESC
      LIMIT ${size}`,
   ).map(toPublic);
@@ -623,7 +615,7 @@ export function listHotPurchaseWorks(limit = 10) {
 export function listRecommendRankWorks(limit = 10) {
   const size = Math.min(Math.max(limit, 1), 40);
   return many<WorkRow>(
-    `${WORK_CARD} WHERE w.status = 'published' AND w.kind = 'script'
+    `${WORK_CARD} WHERE w.status = 'published'
      ORDER BY w.score DESC,
               (COALESCE(w.read_count, 0) + COALESCE(w.purchase_count, 0) * 5) DESC,
               w.id DESC
@@ -676,15 +668,17 @@ export function updateWorkReview(
     review: Review;
     status: "published" | "rejected" | "pending";
     price?: number;
+    kind?: Kind;
   },
 ) {
   const work = getWorkDetail(workId);
   if (!work) return { ok: false as const, error: "找不到这篇" };
   const price = input.price == null ? work.price : input.price > 0 ? 1 : 0;
+  const kind = input.kind === "script" || input.kind === "novel" ? input.kind : work.kind;
   getDb()
     .prepare(
       `UPDATE works
-       SET status = ?, score = ?, grade = ?, review_json = ?, review_source = ?, price = ?
+       SET status = ?, score = ?, grade = ?, review_json = ?, review_source = ?, price = ?, kind = ?
        WHERE id = ?`,
     )
     .run(
@@ -694,6 +688,7 @@ export function updateWorkReview(
       JSON.stringify(input.review),
       input.review.source,
       price,
+      kind,
       workId,
     );
   return { ok: true as const };
@@ -1457,7 +1452,7 @@ export function lookupPublishedWorks(query: string, limit = 12) {
   }
   const pattern = `%${q.replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
   return many<WorkRow>(
-    `${WORK_CARD} WHERE w.status = 'published' AND w.kind = 'script'
+    `${WORK_CARD} WHERE w.status = 'published'
      AND (w.title LIKE ? ESCAPE '\\' OR u.username LIKE ? ESCAPE '\\')
      ORDER BY w.score DESC, w.id DESC
      LIMIT ${size}`,

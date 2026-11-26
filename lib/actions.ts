@@ -139,7 +139,14 @@ export async function uploadAction(_prev: ActionState, formData: FormData): Prom
   const user = await getCurrentUser();
   if (!user) return { error: "请先登录再投稿" };
 
-  const result = await publishMarkdownForUser(user, text(formData, "content"));
+  const kindRaw = text(formData, "kind");
+  if (kindRaw && kindRaw !== "script" && kindRaw !== "novel") {
+    return { error: "请选择短剧或小说" };
+  }
+
+  const result = await publishMarkdownForUser(user, text(formData, "content"), {
+    kind: kindRaw || undefined,
+  });
   if (!result.ok) return { error: result.error };
 
   revalidateAll();
@@ -432,6 +439,8 @@ export async function adminUpdateWorkAction(_prev: ActionState, formData: FormDa
       ? statusRaw
       : (work.status as "published" | "rejected" | "pending");
   const paid = text(formData, "paid") === "1";
+  const kindRaw = text(formData, "kind");
+  const kind = kindRaw === "script" || kindRaw === "novel" ? kindRaw : undefined;
   const note = text(formData, "note").slice(0, 180);
   const grade = gradeOf(score);
 
@@ -459,7 +468,7 @@ export async function adminUpdateWorkAction(_prev: ActionState, formData: FormDa
     summary: note || base.summary || `《${work.title}》站长复审为 ${grade}。`,
   };
 
-  const result = updateWorkReview(workId, { review, status, price: paid ? 1 : 0 });
+  const result = updateWorkReview(workId, { review, status, price: paid ? 1 : 0, kind });
   if (!result.ok) return { error: result.error };
 
   revalidatePath(`/works/${workId}`);

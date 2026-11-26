@@ -121,8 +121,8 @@ export default async function MinePage({ searchParams }: { searchParams: Promise
             投
           </span>
           <span className="mine-menu-body">
-            <strong>投稿短剧</strong>
-            <small>上架后可售卖与买断</small>
+            <strong>投稿</strong>
+            <small>短剧或小说，上架后可售卖与买断</small>
           </span>
           <span className="mine-menu-chev" aria-hidden>
             ›

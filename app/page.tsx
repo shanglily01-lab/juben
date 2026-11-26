@@ -20,24 +20,27 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const scripts = listWorks({ kind: "script", limit: 6 })
     .filter((work) => work.id !== featured?.id)
     .slice(0, 4);
+  const novels = listWorks({ kind: "novel", limit: 6 })
+    .filter((work) => work.id !== featured?.id)
+    .slice(0, 4);
 
   return (
     <div className="wrap page">
       {params.activated === "1" ? <p className="note">邮箱已激活，金币已入账。</p> : null}
       <section className="hero">
         <div className="hero-copy">
-          <p className="kicker">大黄书 · 短剧剧本</p>
+          <p className="kicker">大黄书 · 短剧与小说</p>
           <h1>
             按类入匣，
             <br />
             读完再解锁。
           </h1>
           <p className="lede">
-            精选高反转、快节奏爆款短剧剧本。先行试读，满意再购版权或连载全章。
+            短剧剧本与小说同站收录。先行试读，满意再购版权或连载全章。
           </p>
           <div className="hero-actions">
             <a className="btn solid" href="/browse">
-              浏览短剧
+              浏览书库
             </a>
             <a className="btn ghost" href="/hot">
               查看榜单
@@ -46,7 +49,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         </div>
         <div className="hero-mark" aria-hidden>
           <img className="hero-seal" src="/logo-mark.svg" width={64} height={64} alt="" />
-          <span className="hero-vert">短剧剧本</span>
+          <span className="hero-vert">短剧 · 小说</span>
         </div>
       </section>
 
@@ -122,7 +125,8 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         </section>
       </div>
 
-      <Shelf title="推荐短剧" href="/browse" works={scripts} />
+      <Shelf title="推荐短剧" href="/browse?kind=script" works={scripts} />
+      <Shelf title="推荐小说" href="/browse?kind=novel" works={novels} />
 
       <div className="section-title">
         <h2>怎么用</h2>

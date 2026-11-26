@@ -17,6 +17,7 @@ export function AdminWorkPanel({
   score,
   status,
   price,
+  kind,
   summary,
 }: {
   workId: number;
@@ -24,6 +25,7 @@ export function AdminWorkPanel({
   score: number;
   status: string;
   price: number;
+  kind: string;
   summary: string;
 }) {
   const [coverState, coverAction, coverPending] = useActionState(adminUploadCoverAction, initial);
@@ -71,6 +73,13 @@ export function AdminWorkPanel({
         <label>
           综合分（1–10）
           <input name="score" type="number" min={1} max={10} step={0.1} defaultValue={score} required />
+        </label>
+        <label>
+          体裁
+          <select name="kind" defaultValue={kind === "novel" ? "novel" : "script"}>
+            <option value="script">短剧剧本</option>
+            <option value="novel">小说</option>
+          </select>
         </label>
         <label>
           状态

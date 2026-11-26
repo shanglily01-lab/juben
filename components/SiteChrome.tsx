@@ -31,15 +31,15 @@ export function SiteChrome({ user, children }: { user: ChromeUser; children: Rea
           <img className="logo-seal" src="/logo-mark.svg" width={32} height={32} alt="" />
           <span className="logo-name">
             <strong>大黄书</strong>
-            <small>短剧剧本</small>
+            <small>短剧 · 小说</small>
           </span>
         </a>
         <form className="desk-search" action="/browse">
-          <input name="q" placeholder="搜索短剧" aria-label="搜索短剧" />
+          <input name="q" placeholder="搜索短剧或小说" aria-label="搜索短剧或小说" />
         </form>
         <nav className="desk-nav" aria-label="目录">
           <a href="/browse" aria-current={scripts ? "page" : undefined}>
-            短剧
+            书库
           </a>
           <a href="/hot" aria-current={ranks ? "page" : undefined}>
             榜单
@@ -55,7 +55,7 @@ export function SiteChrome({ user, children }: { user: ChromeUser; children: Rea
           </a>
         </nav>
         <div className="head-actions">
-          <a className="icon-link mobile-search" href="/browse" aria-label="搜索短剧">
+          <a className="icon-link mobile-search" href="/browse" aria-label="搜索短剧或小说">
             搜索
           </a>
           {user ? (
@@ -79,14 +79,14 @@ export function SiteChrome({ user, children }: { user: ChromeUser; children: Rea
         </div>
       </header>
       <main id="main">{children}</main>
-      <footer className="foot">大黄书 · 短剧剧本 · 同一套账号</footer>
+      <footer className="foot">大黄书 · 短剧与小说 · 同一套账号</footer>
       {!paying ? (
         <nav className="tabbar" aria-label="底部导航">
           <a className="tab" href="/browse" aria-current={scripts ? "page" : undefined}>
             <span className="tab-ico" aria-hidden>
-              剧
+              库
             </span>
-            <span className="tab-label">短剧</span>
+            <span className="tab-label">书库</span>
           </a>
           <a className="tab" href="/hot" aria-current={ranks ? "page" : undefined}>
             <span className="tab-ico" aria-hidden>

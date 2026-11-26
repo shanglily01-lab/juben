@@ -1,7 +1,8 @@
 import { ensureSvgCover, upgradeCoverWithAi } from "@/lib/cover";
-import { extractWorkMeta } from "@/lib/extract-meta";
+import { extractWorkMeta, parseKind } from "@/lib/extract-meta";
 import { countWords } from "@/lib/format";
 import { countWorksByAuthor, insertWork, WorkLimitError } from "@/lib/db";
+import type { Kind } from "@/lib/types";
 
 export const UPLOAD_MD_MAX_BYTES = 5 * 1024 * 1024;
 export const UPLOAD_MD_MIN_WORDS = 200;
@@ -25,8 +26,10 @@ export type UploadMdErr = {
 };
 
 export type PublishMarkdownOptions = {
-  /** API Token 批量上架时跳过每人 50 篇 */
+  /** API / 开放上传时跳过每人 50 篇 */
   bypassAuthorLimit?: boolean;
+  /** 强制体裁：script=短剧，novel=小说 */
+  kind?: Kind | string;
 };
 
 /** 登录用户投稿 Markdown 正文：校验 → 抽元数据 → 上架 → 封面。 */
@@ -50,7 +53,8 @@ export async function publishMarkdownForUser(
     return { ok: false, error: `正文请控制在 ${UPLOAD_MD_MAX_WORDS / 10000} 万字以内`, code: "too_long" };
   }
 
-  const meta = await extractWorkMeta(content);
+  const forcedKind = parseKind(options.kind);
+  const meta = await extractWorkMeta(content, { kind: forcedKind });
   const { title, summary, category, kind } = meta;
   const review = {
     score: 6.5,
