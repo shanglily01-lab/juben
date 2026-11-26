@@ -34,25 +34,29 @@ export async function GET(req: Request) {
   }
 
   if (!payConfigured()) {
-    return NextResponse.json({ ok: true, order: { ...orderPayload, payStatus: local.status } });
+    return NextResponse.json({
+      ok: true,
+      order: { ...orderPayload, payStatus: String(local.status || "").toUpperCase() },
+    });
   }
 
   try {
     const remote = await queryUpstreamPayment(orderNo);
-    if (remote.payStatus === "SUCCESS") {
+    const payStatus = String(remote.payStatus || local.status || "").toUpperCase();
+    if (payStatus === "SUCCESS") {
       fulfillPayOrder(orderNo, remote.serialOrderNo);
     }
     return NextResponse.json({
       ok: true,
       order: {
         ...orderPayload,
-        payStatus: remote.payStatus || local.status,
+        payStatus,
       },
     });
   } catch (error) {
     return NextResponse.json({
       ok: true,
-      order: { ...orderPayload, payStatus: local.status },
+      order: { ...orderPayload, payStatus: String(local.status || "").toUpperCase() },
       msg: error instanceof Error ? error.message : "查单失败",
     });
   }
