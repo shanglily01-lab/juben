@@ -6,7 +6,7 @@ import { isCategory } from "@/lib/categories";
 import { normalizeInviteCode } from "@/lib/codes";
 import { reviewWork } from "@/lib/ai";
 import { clearSession, getAdminUser, getCurrentUser, setSession } from "@/lib/auth";
-import { removeCoverFiles, saveUploadedCover } from "@/lib/cover";
+import { hasAiCoverConfig, regenerateCoverWithAi, removeCoverFiles, saveUploadedCover } from "@/lib/cover";
 import { gradeOf, safeNext } from "@/lib/format";
 import { publishMarkdownForUser } from "@/lib/upload-md";
 import {
@@ -372,7 +372,38 @@ export async function deleteRejectedWorkAction(_prev: ActionState, formData: For
   redirect("/mine");
 }
 
-/** 管理员上传自定义封面。 */
+/** 管理员：用 AI 自动生成封面（无需上传图片）。 */
+export async function adminGenerateCoverAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const admin = await getAdminUser();
+  if (!admin) return { error: "需要管理员账号" };
+  const workId = Number(text(formData, "workId"));
+  if (!Number.isInteger(workId) || workId <= 0) return { error: "找不到这篇" };
+  const work = getWorkDetail(workId);
+  if (!work) return { error: "找不到这篇" };
+
+  if (!hasAiCoverConfig()) {
+    return { error: "服务器未配置 AI 出图：请设置 AI_IMAGE_MODEL 与 AI_API_KEY / AI_IMAGE_API_KEY" };
+  }
+
+  const result = await regenerateCoverWithAi({
+    id: work.id,
+    title: work.title,
+    summary: work.summary,
+    category: work.category,
+    kind: work.kind,
+    grade: work.grade,
+    content: work.content,
+  });
+  if (!result.ok) return { error: result.error };
+
+  revalidatePath(`/works/${workId}`);
+  revalidatePath("/ops/works");
+  revalidatePath("/");
+  revalidatePath("/browse");
+  redirect(`/works/${workId}`);
+}
+
+/** 管理员上传自定义封面（可选，一般用 AI 即可）。 */
 export async function adminUploadCoverAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const admin = await getAdminUser();
   if (!admin) return { error: "需要管理员账号" };

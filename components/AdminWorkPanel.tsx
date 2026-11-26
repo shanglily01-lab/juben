@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 
 import {
+  adminGenerateCoverAction,
   adminRereviewAction,
   adminUpdateWorkAction,
   adminUploadCoverAction,
@@ -19,6 +20,7 @@ export function AdminWorkPanel({
   price,
   kind,
   summary,
+  aiCoverReady,
 }: {
   workId: number;
   title: string;
@@ -27,7 +29,9 @@ export function AdminWorkPanel({
   price: number;
   kind: string;
   summary: string;
+  aiCoverReady: boolean;
 }) {
+  const [genState, genAction, genPending] = useActionState(adminGenerateCoverAction, initial);
   const [coverState, coverAction, coverPending] = useActionState(adminUploadCoverAction, initial);
   const [reviewState, reviewAction, reviewPending] = useActionState(adminRereviewAction, initial);
   const [editState, editAction, editPending] = useActionState(adminUpdateWorkAction, initial);
@@ -38,12 +42,29 @@ export function AdminWorkPanel({
         <h2>站长管理</h2>
         <a href="/ops/works">全部稿件</a>
       </div>
-      <p className="hint">《{title}》· 换封面 / 复审 / 改档位</p>
+      <p className="hint">《{title}》· AI 封面 / 复审 / 改档位</p>
+
+      <form className="form admin-form" action={genAction}>
+        <input type="hidden" name="workId" value={workId} />
+        <p className="hint" style={{ marginTop: 0 }}>
+          {aiCoverReady
+            ? "上传稿件后会自动尝试 AI 出图；也可点下面按钮重新生成。"
+            : "服务器尚未配置 AI 出图（AI_IMAGE_MODEL + API Key）。配置后即可一键生成。"}
+        </p>
+        {genState.error ? (
+          <p className="alert" role="alert">
+            {genState.error}
+          </p>
+        ) : null}
+        <button className="btn solid" type="submit" disabled={genPending || !aiCoverReady}>
+          {genPending ? "AI 出图中…" : "AI 生成封面"}
+        </button>
+      </form>
 
       <form className="form admin-form" action={coverAction}>
         <input type="hidden" name="workId" value={workId} />
         <label>
-          上传封面（PNG / JPG / WEBP，≤4MB）
+          或手动上传封面（可选）
           <input name="cover" type="file" accept="image/png,image/jpeg,image/webp" required />
         </label>
         {coverState.error ? (
@@ -51,8 +72,8 @@ export function AdminWorkPanel({
             {coverState.error}
           </p>
         ) : null}
-        <button className="btn solid" type="submit" disabled={coverPending}>
-          {coverPending ? "上传中…" : "保存封面"}
+        <button className="btn ghost" type="submit" disabled={coverPending}>
+          {coverPending ? "上传中…" : "保存本地封面"}
         </button>
       </form>
 

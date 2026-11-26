@@ -12,6 +12,7 @@ import { ReviewCard } from "@/components/ReviewCard";
 import { WorkPurchase } from "@/components/WorkPurchase";
 import { getCurrentUser, isAdminUser } from "@/lib/auth";
 import { categoryName } from "@/lib/categories";
+import { hasAiCoverConfig } from "@/lib/cover";
 import {
   countDiscussionsByWork,
   getWorkBuyoutUserId,
@@ -175,6 +176,7 @@ export default async function WorkPage({
             price={work.price}
             kind={work.kind}
             summary={review?.summary || work.summary}
+            aiCoverReady={hasAiCoverConfig()}
           />
         ) : null}
         <div className="work-main">

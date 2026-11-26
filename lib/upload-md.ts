@@ -97,6 +97,7 @@ export async function publishMarkdownForUser(
     grade: review.grade,
     content,
   };
+  // 先落模板封面保证立刻有图；后台自动 AI 出图替换，无需人工上传。
   try {
     ensureSvgCover(coverInput, true);
   } catch (error) {

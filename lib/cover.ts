@@ -203,15 +203,25 @@ export function promptFor(input: CoverInput) {
     .join("");
   const plot = (input.summary || beats || input.title).replace(/\s+/g, " ").slice(0, 360);
   const scene = (beats || raw).slice(0, 420);
+  const form =
+    input.kind === "novel"
+      ? "literary novel book cover illustration, atmospheric, story-driven"
+      : "cinematic short-drama movie poster, photorealistic";
   return [
-    "Vertical cinematic movie poster, photorealistic, no text, no letters, no watermark, no logo, no title.",
-    `Genre: ${categoryName(input.category)} short drama.`,
+    `Vertical ${form}, no text, no letters, no watermark, no logo, no title.`,
+    `Genre: ${categoryName(input.category)}.`,
     `Story premise: ${plot}`,
     scene ? `Key scene to depict: ${scene}` : "",
     "Show one clear dramatic moment with readable characters, strong lighting, and environmental detail.",
   ]
     .filter(Boolean)
     .join(" ");
+}
+
+/** 是否已配置 AI 出图（上传后自动生成封面依赖此项）。 */
+export function hasAiCoverConfig() {
+  const { apiKey, model } = imageConfig();
+  return Boolean(apiKey && model);
 }
 
 export function imageConfig() {
@@ -384,6 +394,20 @@ export async function createReviewCover(input: CoverInput) {
 /** 仅尝试 AI 出图升级（已有 SVG 时用）。 */
 export async function upgradeCoverWithAi(input: CoverInput) {
   return tryImage(input);
+}
+
+/** 强制用 AI 重出封面；失败时保留/回退 SVG 模板。 */
+export async function regenerateCoverWithAi(input: CoverInput) {
+  if (!hasAiCoverConfig()) {
+    ensureSvgCover(input, true);
+    return { ok: false as const, error: "未配置 AI 出图（需要 AI_IMAGE_MODEL 与 API Key）" };
+  }
+  ensureSvgCover(input, true);
+  const ok = await tryImage(input);
+  if (!ok) {
+    return { ok: false as const, error: "AI 出图失败，请稍后重试或检查出图配置" };
+  }
+  return { ok: true as const };
 }
 
 export function readCover(id: number) {
