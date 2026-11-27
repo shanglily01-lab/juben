@@ -29,7 +29,7 @@ export default async function OpsWorksPage({
       <p className="kicker">站长</p>
       <h1>稿件管理</h1>
       <p className="intro">
-        用 <strong>admin</strong> 账号登录即可管理：换封面、复审评分、上下架。征稿交付仍在{" "}
+        用 <strong>admin</strong> 账号登录即可管理：换封面、重新上传正文、复审评分、上下架。征稿交付仍在{" "}
         <a href="/ops/requirements">/ops/requirements</a>。
       </p>
 

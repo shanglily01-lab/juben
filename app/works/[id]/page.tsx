@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
 import { AdminWorkPanel } from "@/components/AdminWorkPanel";
+import { BookReader } from "@/components/BookReader";
 import { DeleteRejectedWorkForm } from "@/components/DeleteRejectedWorkForm";
 import { WorkDiscussionForm } from "@/components/DiscussionForm";
 import { DiscussionList } from "@/components/DiscussionList";
@@ -11,6 +12,7 @@ import { Reader } from "@/components/Reader";
 import { ReviewCard } from "@/components/ReviewCard";
 import { WorkPurchase } from "@/components/WorkPurchase";
 import { getCurrentUser, isAdminUser } from "@/lib/auth";
+import { extractBookPlate } from "@/lib/book";
 import { categoryName } from "@/lib/categories";
 import { coverSrc, hasAiCoverConfig } from "@/lib/cover";
 import {
@@ -44,7 +46,7 @@ export default async function WorkPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ ep?: string; cover?: string }>;
+  searchParams: Promise<{ ep?: string; cover?: string; replaced?: string }>;
 }) {
   const { id: raw } = await params;
   const id = Number(raw);
@@ -88,19 +90,22 @@ export default async function WorkPage({
   const next = ep < episodes.length ? episodes[ep] : undefined;
   // 被他人买断：不展示正文试读
   const markdown = buyoutTaken && !canRead ? "" : canRead ? current.body : previewMarkdown(current.body);
+  const isNovel = work.kind === "novel";
+  const unit = isNovel ? "章" : "集";
+  const plate = extractBookPlate(markdown);
   const discussions =
     work.status === "published" ? listDiscussionsByWork(work.id, 40) : [];
   const discussionCount = work.status === "published" ? countDiscussionsByWork(work.id) : 0;
 
   return (
     <div className="wrap page">
-      <div className="work-layout">
+      <div className={isNovel ? "work-layout is-novel" : "work-layout"}>
         <header className="work-head">
           <img className="work-cover" src={coverSrc(work.id)} alt="" />
           <div>
             <p className="kicker">
               {kindLabel(work.kind)} · {categoryName(work.category)}
-              {episodes.length > 1 ? ` · 共 ${episodes.length} 集` : ""}
+              {episodes.length > 1 ? ` · 共 ${episodes.length} ${unit}` : ""}
             </p>
             <h1>{work.title}</h1>
             <div className="meta">
@@ -117,6 +122,9 @@ export default async function WorkPage({
             </p>
             {query.cover === "ok" && isAdmin ? (
               <p className="note">封面已替换。若仍看到旧图，请再刷新一次。</p>
+            ) : null}
+            {query.replaced === "1" && isAdmin ? (
+              <p className="note">正文已换成新上传的版本。评分、价格和购买记录都还在。</p>
             ) : null}
             {showBuy ? (
               <WorkPurchase
@@ -187,14 +195,32 @@ export default async function WorkPage({
             <p className="empty">正文已对其他读者关闭。</p>
           ) : (
             <>
-              {episodes.length > 1 ? (
+              {!isNovel && episodes.length > 1 ? (
                 <p className="episode-label">
                   第 {ep} 集 · {current.title}
                   {!canRead ? <span className="hint">（试读）</span> : null}
                 </p>
               ) : null}
               <NoCopy enabled={canRead && work.price > 0 && !isAuthor}>
-                <Reader markdown={markdown} cut={!canRead} />
+                {isNovel && plate ? (
+                  <BookReader
+                    markdown={plate.markdown}
+                    plateSrc={plate.image || coverSrc(work.id)}
+                    chapterTitle={episodes.length > 1 ? current.title : work.title}
+                    cut={!canRead}
+                    prevChapterHref={canRead && prev ? `/works/${work.id}?ep=${ep - 1}` : undefined}
+                    nextChapterHref={canRead && next ? `/works/${work.id}?ep=${ep + 1}` : undefined}
+                  />
+                ) : (
+                  <>
+                    {plate.image ? (
+                      <figure className="episode-plate">
+                        <img src={plate.image} alt="" />
+                      </figure>
+                    ) : null}
+                    <Reader markdown={plate.markdown} cut={!canRead} />
+                  </>
+                )}
               </NoCopy>
               {canRead ? (
                 <EpisodeNav
@@ -204,10 +230,11 @@ export default async function WorkPage({
                   title={current.title}
                   prevTitle={prev?.title}
                   nextTitle={next?.title}
+                  unit={unit}
                 />
               ) : episodes.length > 1 && !buyoutTaken ? (
                 <p className="hint episode-lock-hint">
-                  购买后可阅读全部 {episodes.length} 集，并用上一集 / 下一集翻页。
+                  购买后可阅读全部 {episodes.length} {unit}，并用上一{unit} / 下一{unit}翻页。
                 </p>
               ) : null}
             </>

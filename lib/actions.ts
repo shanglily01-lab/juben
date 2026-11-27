@@ -7,8 +7,9 @@ import { normalizeInviteCode } from "@/lib/codes";
 import { reviewWork } from "@/lib/ai";
 import { clearSession, getAdminUser, getCurrentUser, setSession } from "@/lib/auth";
 import { hasAiCoverConfig, regenerateCoverWithAi, removeCoverFiles, saveUploadedCover } from "@/lib/cover";
-import { gradeOf, safeNext } from "@/lib/format";
-import { publishMarkdownForUser } from "@/lib/upload-md";
+import { extractWorkMeta } from "@/lib/extract-meta";
+import { countWords, gradeOf, safeNext } from "@/lib/format";
+import { publishMarkdownForUser, UPLOAD_MD_MAX_WORDS, UPLOAD_MD_MIN_WORDS } from "@/lib/upload-md";
 import {
   buyoutWorkWithCoins,
   checkIn,
@@ -18,6 +19,7 @@ import {
   deleteDiscussion,
   deleteRejectedWork,
   deleteWorkAsAdmin,
+  replaceWorkContent,
   deliverRequirement,
   findUserByEmail,
   findUserByLogin,
@@ -440,6 +442,43 @@ export async function adminUploadCoverAction(_prev: ActionState, formData: FormD
   revalidatePath("/");
   revalidatePath("/browse");
   redirect(`/works/${workId}?cover=ok`);
+}
+
+/** 管理员用新的 Markdown 覆盖这篇的正文，作品编号和购买记录不变。 */
+export async function adminReplaceContentAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const admin = await getAdminUser();
+  if (!admin) return { error: "需要管理员账号" };
+  const workId = Number(text(formData, "workId"));
+  if (!Number.isInteger(workId) || workId <= 0) return { error: "找不到这篇" };
+  const work = getWorkDetail(workId);
+  if (!work) return { error: "找不到这篇" };
+
+  const content = text(formData, "content").replace(/\r\n/g, "\n").trim();
+  if (!content) return { error: "正文不能为空" };
+  const words = countWords(content);
+  if (words < UPLOAD_MD_MIN_WORDS) return { error: `正文至少 ${UPLOAD_MD_MIN_WORDS} 字` };
+  if (words > UPLOAD_MD_MAX_WORDS) {
+    return { error: `正文请控制在 ${UPLOAD_MD_MAX_WORDS / 10000} 万字以内` };
+  }
+
+  const kindRaw = text(formData, "kind");
+  const kind = kindRaw === "script" || kindRaw === "novel" ? kindRaw : work.kind === "novel" ? "novel" : "script";
+  const meta = await extractWorkMeta(content, { kind });
+  const result = replaceWorkContent(workId, {
+    title: meta.title,
+    kind: meta.kind,
+    category: meta.category,
+    summary: meta.summary,
+    content,
+    wordCount: words,
+  });
+  if (!result.ok) return { error: result.error };
+
+  revalidatePath(`/works/${workId}`);
+  revalidatePath("/ops/works");
+  revalidatePath("/");
+  revalidatePath("/browse");
+  redirect(`/works/${workId}?replaced=1`);
 }
 
 /** 管理员：重新跑一遍审核（AI/规则）。 */

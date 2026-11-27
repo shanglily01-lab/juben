@@ -738,6 +738,41 @@ export function updateWorkReview(
   return { ok: true as const };
 }
 
+/** 管理员用新正文覆盖原作品。作品编号、作者、评分、价格和购买记录保留。 */
+export function replaceWorkContent(
+  workId: number,
+  input: {
+    title: string;
+    kind: Kind;
+    category: string;
+    summary: string;
+    content: string;
+    wordCount: number;
+  },
+) {
+  const work = getWorkDetail(workId);
+  if (!work) return { ok: false as const, error: "找不到这篇" };
+  const kind = input.kind === "novel" ? "novel" : "script";
+  const episodeCount = Math.max(1, splitEpisodes(input.content).length);
+  getDb()
+    .prepare(
+      `UPDATE works
+       SET title = ?, kind = ?, category = ?, summary = ?, content = ?, word_count = ?, episode_count = ?
+       WHERE id = ?`,
+    )
+    .run(
+      input.title,
+      kind,
+      input.category,
+      input.summary,
+      input.content,
+      input.wordCount,
+      episodeCount,
+      workId,
+    );
+  return { ok: true as const, episodeCount };
+}
+
 /** 仅作者可删未过审稿；已上架不可删。 */
 export function deleteRejectedWork(workId: number, userId: number) {
   return txn((db) => {

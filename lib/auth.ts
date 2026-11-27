@@ -51,7 +51,7 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
   };
 }
 
-/** 账号 admin 登录即为管理员（换封面 / 复审）。 */
+/** 账号 admin 登录即为管理员（换封面 / 替换正文 / 复审）。 */
 export function isAdminUser(user: SessionUser | null | undefined) {
   return isAdminAccount(user);
 }

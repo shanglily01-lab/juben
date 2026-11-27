@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, setSession } from "@/lib/auth";
 import {
   activateAction,
+  adminReplaceContentAction,
   checkinAction,
   loginAction,
   logoutAction,
@@ -12,9 +13,12 @@ import {
   uploadAction,
 } from "@/lib/actions";
 import {
+  ADMIN_USERNAME,
   findUserByEmail,
+  findUserByLogin,
   getDb,
   getWorkDetail,
+  hasUnlock,
   insertWork,
   listLedger,
   listWorks,
@@ -289,5 +293,67 @@ describe("签到、充值、解锁、投稿", () => {
     expect((await uploadAction(empty, form({ content: script.content }))).error).toBe(
       "每人最多保存 50 篇稿件",
     );
+  });
+
+  it("管理员可以重新上传正文，购买记录和评分还在", async () => {
+    const author = await register("辛");
+    const authorUser = await activate(author.token);
+    const script = readSeedWorks().find((work) => work.kind === "script");
+    expect(script).toBeTruthy();
+    if (!script) return;
+    const uploaded = await redirectUrl(() =>
+      uploadAction(empty, form({ content: script.content, kind: "script" })),
+    );
+    const workId = Number(uploaded.replace("/works/", ""));
+    getDb().prepare("UPDATE works SET price = 1 WHERE id = ?").run(workId);
+    const before = getWorkDetail(workId);
+    expect(before).toBeTruthy();
+    if (!before) return;
+
+    await redirectUrl(() => logoutAction());
+    const buyer = await register("壬");
+    const buyerUser = await activate(buyer.token);
+    const coins = unlockCoinsFromScore(before.score, Math.max(1, before.episode_count || 1));
+    rechargeCoins(buyerUser.id, coins, "测试充值");
+    expect(await redirectUrl(() => unlockAction(empty, form({ workId: String(workId) })))).toBe(
+      `/works/${workId}`,
+    );
+
+    const scene = "夜色里有人敲门，她站在门后没有动。".repeat(20);
+    const revised = `# 改稿后的剧名\n\n## 第一集\n\n${scene}\n\n## 第二集\n\n${scene}`;
+    expect(
+      (await adminReplaceContentAction(empty, form({ workId: String(workId), content: revised, kind: "script" })))
+        .error,
+    ).toBe("需要管理员账号");
+
+    const admin = findUserByLogin(ADMIN_USERNAME);
+    expect(admin).toBeTruthy();
+    if (!admin) return;
+    await setSession(admin.id);
+    expect((await adminReplaceContentAction(empty, form({ workId: "0", content: revised }))).error).toBe(
+      "找不到这篇",
+    );
+    expect(
+      (await adminReplaceContentAction(empty, form({ workId: String(workId), content: "太短了。", kind: "script" })))
+        .error,
+    ).toContain("至少 200 字");
+
+    expect(
+      await redirectUrl(() =>
+        adminReplaceContentAction(empty, form({ workId: String(workId), content: revised, kind: "script" })),
+      ),
+    ).toBe(`/works/${workId}?replaced=1`);
+
+    const after = getWorkDetail(workId);
+    expect(after?.title).toBe("改稿后的剧名");
+    expect(after?.content).toContain("她站在门后没有动");
+    expect(after?.kind).toBe("script");
+    expect(after?.episode_count).toBe(3);
+    expect(after?.word_count).toBeGreaterThanOrEqual(200);
+    expect(after?.author_id).toBe(authorUser.id);
+    expect(after?.score).toBe(before.score);
+    expect(after?.price).toBe(1);
+    expect(after?.status).toBe(before.status);
+    expect(hasUnlock(buyerUser.id, workId)).toBe(true);
   });
 });
